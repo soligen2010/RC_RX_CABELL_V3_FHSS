@@ -22,7 +22,7 @@ An Arduino Pro Mini and an NRF24L01+ module are needed for this receiver.  Be su
 
 The PA+LNA versions of the NRF24L01+ module provide more receiver range and reliability than the non PA+LNA versions, However the less expensive modules also work well if the on-board antenna is replaced with a better antenna.  These modules are also typically unshielded, but work better when shielded.  Here is an outline of the modifications (TODO: add pictures)
 
-## Antenna
+#### Antenna
 * For the PA_LNA module that has an SMA Connector, remove the connector. A small butane torch to heat the connector work well.  When the solder melts, it pulls right off 
 * Cut the antenna trace.  On the PA+LNA module cut the trace back far enough so that no portion of the trace extends beyond the ground plane on the back of the board.  For the boards with an antenna, cut the trace leading to the antenna shortly after the last surface mount component (a capacitor, I think).
 * Scrape or sand away the solder mask over the antenna trace.  On the boards with an antenna you will also need to sand away the area next to the trace for a ground connection.  For the PA+LNA module you can re-use the ground connections that were used for the connector.
@@ -36,7 +36,7 @@ I am no expert, but based on the best understand I have been able to achieve on 
 * For the shielded portion of the coax, ideally make the length a multiple of 42.5 mm.  170mm seems like a good length. 
 * The length of the antenna at the end should be 32.5mm (based on center frequency of 2.425 GHz.  I don’t have the proper equipment to verify these lengths, experiment for what works best for you.
 
-## Shielding
+#### Shielding
 Shielding will require using 2 layers of heat shrink tubing around the whole module.  
 
 * First solder a bare wire onto a ground point on the board.
