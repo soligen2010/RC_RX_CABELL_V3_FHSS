@@ -4,7 +4,7 @@ RC_RX_CABELL_V3_FHSS is an open source receiver for remote controlled vehicles. 
 The hardware for this receiver is an Arduino Pro Mini (using an ATMEGA328P) and an NRF24L01+ module.  Both are inexpensively available on-line.  Be sure to get the version of a Pro Mini that has pins A4 and A5 broken out.
 
 ~~The transmitter side of this RC protocol is in the Multi-protocol TX Module project at [https://github.com/pascallanger/DIY-Multiprotocol-TX-Module]( https://github.com/pascallanger/DIY-Multiprotocol-TX-Module).~~
-Transmittter code has not yet been merged into Multiprotocol.  TO try this out, plese use the soligen2010 fork of MultiProtocol at [https://github.com/soligen2010/DIY-Multiprotocol-TX-Module]( https://github.com/soligen2010/DIY-Multiprotocol-TX-Module)
+Transmitter code has not yet been merged into Multiprotocol.  To try this out, please use the soligen2010 fork of MultiProtocol at [https://github.com/soligen2010/DIY-Multiprotocol-TX-Module]( https://github.com/soligen2010/DIY-Multiprotocol-TX-Module)
 
 ## The Protocol
 The protocol used is named CABELL_V3 (the third version, but the first version publicly released).  It is a FHSS protocol using the NRF24L01 2.4 GHz transceiver.  45 channels are used from 2.403 through 2.447 GHz.  The reason for using 45 channels it to keep operation within the overlap area between the 2.4 GHz ISM band (governed in the USA by FCC part 15) and the HAM portion of the band (governed in the USA by FCC part 97).  This allows part 15 compliant use of the protocol, while allowing licensed amateur radio operators to operate under the less restrictive part 97 rules if desired.
