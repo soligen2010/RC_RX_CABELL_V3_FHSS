@@ -7,7 +7,7 @@ The hardware for this receiver is an Arduino Pro Mini (using an ATMEGA328P) and 
 Transmitter code has not yet been merged into Multiprotocol.  To try this out, please use the soligen2010 fork of MultiProtocol at [https://github.com/soligen2010/DIY-Multiprotocol-TX-Module]( https://github.com/soligen2010/DIY-Multiprotocol-TX-Module)
 
 ## The Protocol
-The protocol used is named CABELL_V3 (the third version, but the first version publicly released).  It is a FHSS protocol using the NRF24L01 2.4 GHz transceiver.  45 channels are used from 2.403 through 2.447 GHz.  The reason for using 45 channels it to keep operation within the overlap area between the 2.4 GHz ISM band (governed in the USA by FCC part 15) and the HAM portion of the band (governed in the USA by FCC part 97).  This allows part 15 compliant use of the protocol, while allowing licensed amateur radio operators to operate under the less restrictive part 97 rules if desired.
+The protocol used is named CABELL_V3 (the third version, but the first version publicly released).  It is a FHSS protocol using the NRF24L01+ 2.4 GHz transceiver.  45 channels are used from 2.403 through 2.447 GHz.  The reason for using 45 channels it to keep operation within the overlap area between the 2.4 GHz ISM band (governed in the USA by FCC part 15) and the HAM portion of the band (governed in the USA by FCC part 97).  This allows part 15 compliant use of the protocol, while allowing licensed amateur radio operators to operate under the less restrictive part 97 rules if desired.
 
 Each transmitter is assigned a random ID (this is handled by the Multi-protocol TX Module) based on this ID one of 362880 possible channel sequences is used for the frequency hopping.  The hopping pattern algorithm ensures that each hop moves at least 9 channels from the previous channel.  One packet is sent every 3 milliseconds, changing channels with each packet. All 45 channels are used equally.
 
@@ -75,7 +75,7 @@ Failsafe set mode will set the failsafe values.  This can be done one of two way
 
 When failsafe set mode is entered the LED is turned on and stays on until the failsafe set mode is exited.  Only the values from the first packet received in failsafe set mode are saved (this is to avoid accidentally using up all of the EEPROMs limited number of write operations)
 
-Values for all channels can be se except for the throttle channel.  The fail safe for throttle is always the minimum throttle.
+Values for all channels can be set except for the throttle channel.  The fail safe for throttle is always the minimum throttle.
 
 ## Packet Format
 
