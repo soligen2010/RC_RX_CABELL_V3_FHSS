@@ -360,13 +360,13 @@ void unbindReciever() {
         EEPROM.put(x,value);
   }
   
-  Serial.print("Reciever un-bound.  Reboot to enter bind mode");
+  Serial.println("Reciever un-bound.  Reboot to enter bind mode");
   outputFailSafeValues(true);
   bool ledState = false;
   while (true) {                                           // Flash LED forever indicating unbound
     digitalWrite(LED_PIN, ledState);
     ledState =  !ledState;
-    delay(500);                                            // Fast LED flash
+    delay(250);                                            // Fast LED flash
   }  
 }
 
@@ -388,7 +388,7 @@ void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]) {
     EEPROM.put(softRebindFlagEEPROMAddress,(uint8_t)DO_NOT_SOFT_REBIND);
     setFailSafeDefaultValues();
     outputFailSafeValues(true);
-    Serial.print("Reciever bound.  Reboot to enter normal mode");
+    Serial.println("Reciever bound.  Reboot to enter normal mode");
     bool ledState = false;
     while (true) {                                           // Flash LED forever indicating bound
       digitalWrite(LED_PIN, ledState);
@@ -503,7 +503,7 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
   if (!bindMode && (setFailSafeButtonState == ClickEncoder::Held) && (RxMode == CABELL_RxTxPacket_t::RxMode_t::normal)) {
     RxMode = CABELL_RxTxPacket_t::RxMode_t::setFailSafe;
   }
-  
+
   switch (RxMode) {
     case CABELL_RxTxPacket_t::RxMode_t::bind   :  if (bindMode) {
                                                     bindReciever(modelNum, tempHoldValues);
@@ -545,7 +545,7 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
                                                   break;
                                                   
     case CABELL_RxTxPacket_t::RxMode_t::unBind :  if (modelNum == currentModel) {
-                                                      void unbindReciever();
+                                                    unbindReciever();
                                                   } else {
                                                     packet_rx = false;
                                                     Serial.println("Wrong Model Number");
