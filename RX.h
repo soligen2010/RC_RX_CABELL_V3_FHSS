@@ -44,7 +44,7 @@
 #define CABELL_RADIO_MIN_CHANNEL_NUM  3                   // Channel 0 is right on the boarder of allowed frequency range, so move up to avoid bleeding over
 
 #define CABELL_OPTION_MASK_CHANNEL_REDUCTION     0x0F
-#define CABELL_OPTION_MASK_RECIEVER_OUTPUT_MODE  0x70
+#define CABELL_OPTION_MASK_RECIEVER_OUTPUT_MODE  0x30
 #define CABELL_OPTION_SHIFT_RECIEVER_OUTPUT_MODE 4
 #define CABELL_OPTION_MASK_MAX_POWER_OVERRIDE    0x80
 
@@ -89,10 +89,11 @@ typedef struct {
    uint8_t  reserved = 0;
    uint8_t  option;
                           /*   mask 0x0F    : Channel reduction.  The number of channels to not send (subtracted frim the 16 max channels) at least 4 are always sent
-                           *   mask 0x70>>4 : Reciever outout mode
-                           *                  1 = Single PPM on individual pins for each channel 
-                           *                  2 = SUM PPM on channel 1 pin
-                           *   mask 0x80>>7   Unused by RX.  Contains max power override flag
+                           *   mask 0x30>>4 : Reciever outout mode
+                           *                  0 = Single PPM on individual pins for each channel 
+                           *                  1 = SUM PPM on channel 1 pin
+                           *   mask 0x40>>7   Unused 
+                           *   mask 0x80>>7   Unused by RX.  Contains max power override flag for Multiprotocol T module
                            */  
    uint8_t  modelNum;
    uint16_t checkSum; 
