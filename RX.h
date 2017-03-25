@@ -31,7 +31,6 @@
 
 #define RX_NUM_CHANNELS            8
 
-#define RADIO_DATA_RATE            RF24_250KBPS     // RF24_1MBPS RF24_2MBPS RF24_250KBPS
 #define RADIO_PA_LEVEL             RF24_PA_MAX      // RF24_PA_MAX  RF24_PA_HIGH  RF24_PA_LOW  RF24_PA_MIN
   
 #define CABELL_BIND_RADIO_ADDR  0xA4B7C123F7LL
@@ -81,10 +80,12 @@
 
 typedef struct {
    enum RxMode_t : uint8_t {   // Note bit 8 is used to indicate if the packet is the first of 2 on the channel.  Mask out this bit before using the enum
-         normal      = 0,
-         bind        = 1,
-         setFailSafe = 2,
-         unBind      = 127
+         normal                 = 0,
+         bind                   = 1,
+         setFailSafe            = 2,
+         normalWithTelemetry    = 3,
+         telemetryResponse      = 4,
+         unBind                 = 127
    } RxMode;
    uint8_t  reserved = 0;
    uint8_t  option;
@@ -108,7 +109,7 @@ void outputFailSafeValues(bool callOutputChannels);
 void outputChannels();
 void attachServoPins();
 void detachServoPins();
-void setNextRadioChannel();
+void setNextRadioChannel(bool sendTelemetry);
 void checkFailsafeDisarmTimeout(unsigned long lastPacketTime);
 void unbindReciever();
 void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]);
@@ -119,6 +120,8 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
 void setFailSafeDefaultValues();
 void loadFailSafeDefaultValues();
 void setFailSafeValues(uint16_t newFailsafeValues[]);
+void setNewDataRate();
+void sendTelemetryPacket();
 
 #endif
 

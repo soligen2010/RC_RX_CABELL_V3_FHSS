@@ -116,7 +116,7 @@ void setupReciever() {
   radio.enableDynamicPayloads();
   radio.setPALevel(RADIO_PA_LEVEL);
   radio.setChannel(0);                    // start out on a channel we dont use so we dont start recieving packets yet.  It will get changed when the looping starts
-  radio.setDataRate(RADIO_DATA_RATE );
+  setNewDataRate();
   radio.setAutoAck(0);
 
   #ifdef USE_IRQ_FOR_READ
@@ -189,7 +189,7 @@ void outputChannels() {
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-void setNextRadioChannel() {
+void setNextRadioChannel(bool sendTelemetry) {
   static int currentChannel = CABELL_RADIO_MIN_CHANNEL_NUM;  // Initializes the channel sequence.
   
   #ifdef USE_IRQ_FOR_READ
@@ -197,6 +197,9 @@ void setNextRadioChannel() {
   #endif
   radio.stopListening();
   radio.closeReadingPipe(1);
+  if (sendTelemetry) {
+    sendTelemetryPacket();
+  }
   currentChannel = getNextChannel (radioChannel, CABELL_RADIO_CHANNELS, currentChannel);
   radio.setChannel(currentChannel);
   radio.openReadingPipe(1,radioPipeID);
@@ -228,10 +231,12 @@ bool getPacket() {
   if (!radio.available()) {
   #endif
     if ((long)(micros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet eas missed, go to the next channel
-      setNextRadioChannel();
+      setNextRadioChannel(false);                                   // don't send telemetry when packet missed
+      //Serial.println("miss");
       if ((long)(nextAutomaticChannelSwitch - lastRadioPacketeRecievedTime) > RESYNC_TIME_OUT) {  // if a long time passed, increase timeout duration to re-sync with the TX
         nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
         Serial.println("Re-sync Attempt");
+        setNewDataRate();                       //Alternate data rates until signal found
       } else {
         nextAutomaticChannelSwitch += EXPECTED_PACKET_INTERVAL;
 //        Serial.print("\t\tMiss "); Serial.println(currentChannel);
@@ -252,7 +257,6 @@ bool getPacket() {
       //Serial.println(lastRadioPacketeRecievedTime);
       nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + INITIAL_PACKET_TIMEOUT; 
     #endif
-    setNextRadioChannel();    
     goodPacket_rx = readAndProcessPacket();
     
     if (goodPacket_rx) {
@@ -465,7 +469,6 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   uint8_t maxPayloadValueIndex = sizeof(RxPacket.payloadValue) - (sizeof(RxPacket) - packetSize);
   uint8_t channelsRecieved = CABELL_NUM_CHANNELS - channelReduction; 
   
-  nextOutputMode = (RxPacket.option & CABELL_OPTION_MASK_RECIEVER_OUTPUT_MODE) >> CABELL_OPTION_SHIFT_RECIEVER_OUTPUT_MODE;
 
   // Remove 8th bit from RxMode becasye this is a toggle bit that is not included in the checksum
   // This toggle with each xmit so consecrutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
@@ -482,6 +485,8 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
 
   // if packet is good, copy the channel values
   if (packet_rx) {
+    setNextRadioChannel((RxPacket.RxMode==CABELL_RxTxPacket_t::RxMode_t::normalWithTelemetry)?true:false);                   // Send telemetry if in telemetry mode
+    nextOutputMode = (RxPacket.option & CABELL_OPTION_MASK_RECIEVER_OUTPUT_MODE) >> CABELL_OPTION_SHIFT_RECIEVER_OUTPUT_MODE;
     for ( int b = 0 ; b < CABELL_NUM_CHANNELS ; b ++ ) { 
       channelValues[b] =  (b < channelsRecieved) ? tempHoldValues[b] : CHANNEL_MID_VALUE;   // use the mid value for channels not recieved.
     }
@@ -489,6 +494,7 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   else
   {
     Serial.println("RX Pckt Err");
+    setNextRadioChannel(false);                   // Dont send telemetry if the packet was in error
   }  
   return packet_rx;
 }
@@ -586,6 +592,34 @@ bool decodeChannelValues(CABELL_RxTxPacket_t RxPacket, uint8_t channelsRecieved,
 //  Serial.println(millis());
   
   return packet_rx;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
+void setNewDataRate() {
+  static bool fastDataRate = true;
+
+  fastDataRate = !fastDataRate;
+
+  if (fastDataRate) {
+    radio.setDataRate(RF24_1MBPS);
+  } else {
+    radio.setDataRate(RF24_250KBPS );
+  }  
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
+void sendTelemetryPacket() {
+  radio.openWritingPipe(radioPipeID);
+
+  byte sendPacket = CABELL_RxTxPacket_t::RxMode_t::telemetryResponse;
+
+  static int8_t packetCounter = 0;  
+  packetCounter++;
+  sendPacket &= 0x7F;               // clear 8th bit
+  sendPacket |= packetCounter<<7;   // This causes the 8th bit of the first byte to toggle with each xmit so consecrutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
+
+  radio.write( &sendPacket, sizeof(sendPacket),0);   //This waits for the xmit to complete before returning.  NoAck is set so does not wait for ack
+
 }
 
 
