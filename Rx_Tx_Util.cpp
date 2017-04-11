@@ -100,7 +100,7 @@ void getChannelSequence (uint8_t outArray[], uint8_t numChannels, uint64_t permu
     }
     // Copy the selected value into it's new array slot
     outArray[i] = sequenceValue;
-    Serial.println(sequenceValue);
+    //Serial.println(sequenceValue);
   }
 }
 

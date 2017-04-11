@@ -46,7 +46,7 @@
 #define AUX4_PIN                  9    
 
 #define PPM_OUTPUT_PIN            2
-#define BIND_BUTTON_PIN           A4
+#define BIND_BUTTON_PIN           A3
 #define LED_PIN                   A1
 
 #ifdef USE_IRQ_FOR_READ
