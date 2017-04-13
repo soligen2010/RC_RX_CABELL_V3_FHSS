@@ -611,15 +611,37 @@ void setNewDataRate() {
 void sendTelemetryPacket() {
   radio.openWritingPipe(radioPipeID);
 
-  byte sendPacket = CABELL_RxTxPacket_t::RxMode_t::telemetryResponse;
-
+  byte sendPacket[2] = {CABELL_RxTxPacket_t::RxMode_t::telemetryResponse};
+ 
   static int8_t packetCounter = 0;  
   packetCounter++;
-  sendPacket &= 0x7F;               // clear 8th bit
-  sendPacket |= packetCounter<<7;   // This causes the 8th bit of the first byte to toggle with each xmit so consecrutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
+  sendPacket[0] &= 0x7F;               // clear 8th bit
+  sendPacket[0] |= packetCounter<<7;   // This causes the 8th bit of the first byte to toggle with each xmit so consecrutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
+  sendPacket[1] = calculateRSSI();
 
   radio.write( &sendPacket, sizeof(sendPacket),0);   //This waits for the xmit to complete before returning.  NoAck is set so does not wait for ack
 
+}
+
+
+//--------------------------------------------------------------------------------------------------------------------------
+uint8_t calculateRSSI() {
+  static uint8_t rssi = TELEMETRY_RSSI_MAX_VALUE;                                           // Initialize to perfect rssi until it can be calcualted
+  static unsigned long nextRssiCalcTime = micros() + TELEMETRY_RSSI_CALC_INTERVAL;
+  static uint16_t rssiCounter = 0;
+
+  rssiCounter++;
+  if ((long)(micros() - nextRssiCalcTime) >= 0 ) {
+    // RSSI is the based on hte expected packet rate for the interval vs. actiual packets.  255 is 100% of the expected rate.
+    nextRssiCalcTime = micros() + TELEMETRY_RSSI_CALC_INTERVAL;
+    // calculate rssi as a ratio of expected to actual packets as a percent then map to actual range
+    uint16_t rssiCalc = (uint16_t) (((float)rssiCounter / (float)((uint16_t)((float)TELEMETRY_RSSI_CALC_INTERVAL/(float)EXPECTED_PACKET_INTERVAL)) * (float) (TELEMETRY_RSSI_MAX_VALUE - TELEMETRY_RSSI_MIN_VALUE)) + float(TELEMETRY_RSSI_MIN_VALUE));
+    rssi = constrain(rssiCalc,TELEMETRY_RSSI_MIN_VALUE,TELEMETRY_RSSI_MAX_VALUE);
+    Serial.print(rssiCounter);Serial.print(' ');
+    Serial.println(rssi);
+    rssiCounter = 0;
+  }
+  return rssi;
 }
 
 
