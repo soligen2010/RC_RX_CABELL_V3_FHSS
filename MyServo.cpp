@@ -82,7 +82,7 @@ static inline void handle_interrupts(timer16_Sequence_t timer, volatile uint16_t
 #ifndef WIRING // Wiring pre-defines signal handlers so don't define any if compiling for the Wiring platform
 // Interrupt handlers for Arduino
 #if defined(_useTimer1)
-static void MyServoInterruptOneProcessing()
+void MyServoInterruptOneProcessing()
 {
   handle_interrupts(_timer1, &TCNT1, &OCR1A);
 }
