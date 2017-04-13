@@ -32,7 +32,7 @@
 #include "Rx_Tx_Util.h"
 #include "SUM_PPM.h"
 #include "MyServo.h"    // hacked to remove timer1 ISR - must call this in my own ISR
-#include <ClickEncoder.h>
+#include <ClickEncoder.h>    // use liubrary from github https://github.com/soligen2010/encoder
 
 RF24 radio(RADIO_CE_PIN,RADIO_CSN_PIN);
   
