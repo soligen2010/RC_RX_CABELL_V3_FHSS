@@ -258,7 +258,6 @@ bool getPacket() {
       nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + INITIAL_PACKET_TIMEOUT; 
     #endif
     goodPacket_rx = readAndProcessPacket();
-    
     if (goodPacket_rx) {
       inititalGoodPacketRecieved = true;
       lastPacketTime = millis();
@@ -505,9 +504,10 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
   static bool failSafeValuesHaveBeenSet = false;
 
   // fail safe settings can come in on a failsafe packet, but also use a normal packed if bind mode button is pressed after start up
-  ClickEncoder::Button setFailSafeButtonState = setFailSafeButton->getButton();
-  if (!bindMode && (setFailSafeButtonState == ClickEncoder::Held) && (RxMode == CABELL_RxTxPacket_t::RxMode_t::normal)) {
-    RxMode = CABELL_RxTxPacket_t::RxMode_t::setFailSafe;
+  if (!bindMode && (setFailSafeButton->getButton() == ClickEncoder::Held)) { 
+    if (RxMode == CABELL_RxTxPacket_t::RxMode_t::normal || RxMode == CABELL_RxTxPacket_t::RxMode_t::normalWithTelemetry) {
+      RxMode = CABELL_RxTxPacket_t::RxMode_t::setFailSafe;
+    }
   }
 
   switch (RxMode) {
@@ -535,6 +535,7 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
                                                        }
                                                        break;
                                                       
+    case CABELL_RxTxPacket_t::RxMode_t::normalWithTelemetry : 
     case CABELL_RxTxPacket_t::RxMode_t::normal :  if (modelNum == currentModel) {
                                                     digitalWrite(LED_PIN, LOW);
                                                     failSafeValuesHaveBeenSet = false;             // Reset when not in setFailSafe mode so next time failsafe is to be set it will take
@@ -611,7 +612,7 @@ void setNewDataRate() {
 void sendTelemetryPacket() {
   radio.openWritingPipe(radioPipeID);
 
-  byte sendPacket[2] = {CABELL_RxTxPacket_t::RxMode_t::telemetryResponse};
+  uint8_t sendPacket[2] = {CABELL_RxTxPacket_t::RxMode_t::telemetryResponse};
  
   static int8_t packetCounter = 0;  
   packetCounter++;
@@ -619,8 +620,14 @@ void sendTelemetryPacket() {
   sendPacket[0] |= packetCounter<<7;   // This causes the 8th bit of the first byte to toggle with each xmit so consecrutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
   sendPacket[1] = calculateRSSI();
 
-  radio.write( &sendPacket, sizeof(sendPacket),0);   //This waits for the xmit to complete before returning.  NoAck is set so does not wait for ack
-
+  uint8_t packetSize =  sizeof(sendPacket);
+  radio.startFastWrite( &sendPacket[0], packetSize, 0); 
+      // calculate transmit time based on packet size and data rate of 1MB per sec
+      // This is done becasue polling the status register during xmit to see when xmit is done casued issues some times.
+      // bits = packstsize * 8  +  73 bits overhead
+      // at 1 MB per sec, one bit is 1 uS
+      // then add 160 uS which is 130 uS to begin the xmit and 30 uS fudge factor
+      delayMicroseconds(((unsigned long)packetSize * 8ul)  +  73ul + 160ul)   ;
 }
 
 
@@ -637,8 +644,8 @@ uint8_t calculateRSSI() {
     // calculate rssi as a ratio of expected to actual packets as a percent then map to actual range
     uint16_t rssiCalc = (uint16_t) (((float)rssiCounter / (float)((uint16_t)((float)TELEMETRY_RSSI_CALC_INTERVAL/(float)EXPECTED_PACKET_INTERVAL)) * (float) (TELEMETRY_RSSI_MAX_VALUE - TELEMETRY_RSSI_MIN_VALUE)) + float(TELEMETRY_RSSI_MIN_VALUE));
     rssi = constrain(rssiCalc,TELEMETRY_RSSI_MIN_VALUE,TELEMETRY_RSSI_MAX_VALUE);
-    Serial.print(rssiCounter);Serial.print(' ');
-    Serial.println(rssi);
+//    Serial.print(rssiCounter);Serial.print(' ');
+//    Serial.println(rssi);
     rssiCounter = 0;
   }
   return rssi;
