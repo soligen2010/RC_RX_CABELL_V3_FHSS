@@ -1,4 +1,4 @@
-# RC_RX_CABELL_V3_FHSS
+﻿# RC_RX_CABELL_V3_FHSS
 ## Background
 RC_RX_CABELL_V3_FHSS is an open source receiver for remote controlled vehicles.  Developed by Dennis Cabell (KE8FZX)
 The hardware for this receiver is an Arduino Pro Mini (using an ATMEGA328P) and an NRF24L01+ module.  Both are inexpensively available on-line.  Be sure to get the version of a Pro Mini that has pins A4 and A5 broken out.
@@ -18,9 +18,9 @@ I recommend reducing the number of channels as much as possible based on what yo
 The protocol also assigns each model a different number so one set of model setting does not control the wrong model.  The protocol can distinguish up to 255 different models, but be aware that the multiprotocol transmitter software only does 16.
 
 ## Hardware
-An Arduino Pro Mini and an NRF24L01+ module are needed for this receiver.  Be sure to get the version of a Pro Mini that has pins A4 and A5 broken out.  The hardware folder contains a schematic and a PCB layout; however this version of the PCB has not been tested.  I am still using the previous version of the PCB and modifying it to implement the changes included in the new version. If anyone tries this PCB version, please open an issue let me know how it works.
+An Arduino Pro Mini and an NRF24L01+ module are needed for this receiver.  Be sure to get the version of a Pro Mini that has pins A4 and A5 broken out (and A6, A7 too for future use as analog imputs for telemetry).  The hardware folder contains a schematic and a PCB layout; however this version of the PCB has not been tested.  I am still using the previous version of the PCB and modifying it to implement the changes included in the new version. If anyone tries this PCB version, please open an issue let me know how it works.
 
-The PA+LNA versions of the NRF24L01+ module provide more receiver range and reliability than the non PA+LNA versions, However the less expensive modules also work well if the on-board antenna is replaced with a better antenna.  These modules are also typically unshielded, but work better when shielded.  Here is an outline of the modifications (TODO: add pictures)
+The PA+LNA versions of the NRF24L01+ module provide more receiver range and reliability than the non PA+LNA versions, However the less expensive modules also work OK if the on-board antenna is replaced with a better antenna, although randomly some units see to work well and others not so well.  I recomend range testing each module.  These modules are also typically unshielded, but work better when shielded.  Here is an outline of the modifications (TODO: add pictures)
 
 #### Antenna
 * For the PA_LNA module that has an SMA Connector, remove the connector. A small butane torch to heat the connector work well.  When the solder melts, it pulls right off 
@@ -34,7 +34,7 @@ The PA+LNA versions of the NRF24L01+ module provide more receiver range and reli
 
 I am no expert, but based on the best understand I have been able to achieve on the theory, using RG-178 or RG-316 (both have speed factor of 69.5) the calculated theoretical lengths to use are:
 * For the shielded portion of the coax, ideally make the length a multiple of 42.5 mm.  170mm seems like a good length. 
-* The length of the antenna at the end should be 32.5mm (based on center frequency of 2.425 GHz.  I don’t have the proper equipment to verify these lengths, experiment for what works best for you.
+* The length of the antenna at the end should theoretically be 32.5mm (based on center frequency of 2.425 GHz.  I don’t have the proper equipment to verify these lengths, experiment for what works best for you.  My tests showed 32mm seems to work better than 32.5 for a monopole antenna.
 
 #### Shielding
 Shielding will require using 2 layers of heat shrink tubing around the whole module.  
@@ -83,10 +83,12 @@ Values for all channels can be set except for the throttle channel.  The fail sa
 typedef struct {
    enum RxMode_t : uint8_t {   // Note bit 8 is used to indicate if the packet is the first of 2 on the channel.  
                                // Mask out this bit before using the enum
-         normal      = 0,
-         bind        = 1,
-         setFailSafe = 2,
-         unBind      = 127
+         normal                 = 0,  // 250 kbps
+         bind                   = 1,
+         setFailSafe            = 2,
+         normalWithTelemetry    = 3,  // Experimental.  1 Mbps
+         telemetryResponse      = 4,
+         unBind                 = 127
    } RxMode;
    uint8_t  reserved = 0;
    uint8_t  option;
