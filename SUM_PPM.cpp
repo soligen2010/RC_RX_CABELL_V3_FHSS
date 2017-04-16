@@ -111,8 +111,9 @@ void SUM_PPM_ISR() {
       calc_rest = 0;
     }
     else{
-      OCR1A = (ppmValueArray[cur_chan_numb] - PPM_PulseLen) * 2;
-      calc_rest = calc_rest + ppmValueArray[cur_chan_numb];
+      int16_t ppmValue = constrain(ppmValueArray[cur_chan_numb],CHANNEL_MIN_VALUE,CHANNEL_MAX_VALUE);
+      OCR1A = (ppmValue - PPM_PulseLen) * 2;
+      calc_rest = calc_rest + ppmValue;
       cur_chan_numb++;
     }     
   }
