@@ -44,12 +44,13 @@ void ppmSetup(uint8_t pin, uint8_t channelCount){
   
   //////////////////////CONFIGURATION///////////////////////////////
   #define PPM_FrLen 22500  //set the PPM frame length in microseconds (1ms = 1000µs)
+  #define PPM_MaxChannels 8  //The maximum number of channels that can be sent in a frame
   #define PPM_PulseLen 300  //set the pulse length
   #define onState 1  //set polarity of the pulses: 1 is positive, 0 is negative
   //////////////////////////////////////////////////////////////////
 
   ppmPin = pin;
-  ppmChannelCount = channelCount;
+  ppmChannelCount = min(PPM_MaxChannels,channelCount);
   
   pinMode(ppmPin, OUTPUT);
   digitalWrite(ppmPin, !onState);  //set the PPM signal pin to the default state (off)
