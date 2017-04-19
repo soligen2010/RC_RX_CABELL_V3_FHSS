@@ -445,7 +445,7 @@ bool validateChecksum(CABELL_RxTxPacket_t packet, uint8_t maxPayloadValueIndex) 
     packetSum = packetSum +  packet.payloadValue[x];
   }
 
-  if (packetSum != packet.checkSum ) {  
+  if (packetSum != ((((uint16_t)packet.checkSum_MSB) <<8) + (uint16_t)packet.checkSum_LSB)) {  
     //Serial.print("Checksum Error "); Serial.print(packetSum); Serial.print(" expected ");  Serial.println(packet.checkSum); 
     return false;       // dont take packet if checksum bad  
   } 
@@ -463,6 +463,8 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   
   radio.read( &RxPacket,  sizeof(RxPacket) );
 
+  setNextRadioChannel((RxPacket.RxMode==CABELL_RxTxPacket_t::RxMode_t::normalWithTelemetry)?true:false);                   // Send telemetry if in telemetry mode.  Doing this as soon as possible to keep timing as tight as possible
+  
   uint8_t channelReduction = constrain((RxPacket.option & CABELL_OPTION_MASK_CHANNEL_REDUCTION),0,CABELL_NUM_CHANNELS-CABELL_MIN_CHANNELS);  // Must be at least 4 channels, so cap at 12
   uint8_t packetSize = sizeof(RxPacket) - ((((channelReduction - (channelReduction%2))/ 2)) * 3);      // reduce 3 bytes per 2 channels, but not last channel if it is odd
   uint8_t maxPayloadValueIndex = sizeof(RxPacket.payloadValue) - (sizeof(RxPacket) - packetSize);
@@ -484,7 +486,6 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
 
   // if packet is good, copy the channel values
   if (packet_rx) {
-    setNextRadioChannel((RxPacket.RxMode==CABELL_RxTxPacket_t::RxMode_t::normalWithTelemetry)?true:false);                   // Send telemetry if in telemetry mode
     nextOutputMode = (RxPacket.option & CABELL_OPTION_MASK_RECIEVER_OUTPUT_MODE) >> CABELL_OPTION_SHIFT_RECIEVER_OUTPUT_MODE;
     for ( int b = 0 ; b < CABELL_NUM_CHANNELS ; b ++ ) { 
       channelValues[b] =  (b < channelsRecieved) ? tempHoldValues[b] : CHANNEL_MID_VALUE;   // use the mid value for channels not recieved.
@@ -495,6 +496,8 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
     Serial.println("RX Pckt Err");
     setNextRadioChannel(false);                   // Dont send telemetry if the packet was in error
   }  
+
+  calculateRSSI(packet_rx);   // This will maintain the RSSI based on if the packet was good or not.
   return packet_rx;
 }
 
@@ -612,13 +615,16 @@ void setNewDataRate() {
 void sendTelemetryPacket() {
   radio.openWritingPipe(radioPipeID);
 
-  uint8_t sendPacket[2] = {CABELL_RxTxPacket_t::RxMode_t::telemetryResponse};
+  uint8_t sendPacket[4] = {CABELL_RxTxPacket_t::RxMode_t::telemetryResponse};
  
-  static int8_t packetCounter = 0;  
+  static int8_t packetCounter = 0;  // this is only used for toggleing bit
   packetCounter++;
   sendPacket[0] &= 0x7F;               // clear 8th bit
   sendPacket[0] |= packetCounter<<7;   // This causes the 8th bit of the first byte to toggle with each xmit so consecrutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
-  sendPacket[1] = calculateRSSI();
+  sendPacket[1] = calculateRSSI(false);  // Passing false will return the RSSI without affecting the RSSI calculation.  Another call to calulateRSSI elsehere will pass true for a good packet to maintain the RSSI value.
+  
+  sendPacket[3] = analogRead(TELEMETRY_ANALOG_INPUT_1)/4;  // Send a 8 bit value (0 to 255) of the analog input.  Can be used for Lipo coltage or other analog input for telemetry
+  sendPacket[4] = analogRead(TELEMETRY_ANALOG_INPUT_2)/4;  // Send a 8 bit value (0 to 255) of the analog input.  Can be used for Lipo coltage or other analog input for telemetry
 
   uint8_t packetSize =  sizeof(sendPacket);
   radio.startFastWrite( &sendPacket[0], packetSize, 0); 
@@ -632,13 +638,18 @@ void sendTelemetryPacket() {
 
 
 //--------------------------------------------------------------------------------------------------------------------------
-uint8_t calculateRSSI() {
-  static uint8_t rssi = TELEMETRY_RSSI_MAX_VALUE;                                           // Initialize to perfect rssi until it can be calcualted
+uint8_t calculateRSSI(bool goodPacket) {
+  // Passign in true for a good packet will improve the RSSI in each interval.
+  // This can additionally be called at any time with false to just return the current RSSI and it wont affect calculation (but may trigger the interval end logic) 
+
+  static uint8_t rssi = TELEMETRY_RSSI_MAX_VALUE;                                           // Initialize to perfect RSSI until it can be calcualted
   static unsigned long nextRssiCalcTime = micros() + TELEMETRY_RSSI_CALC_INTERVAL;
   static uint16_t rssiCounter = 0;
 
-  rssiCounter++;
-  if ((long)(micros() - nextRssiCalcTime) >= 0 ) {
+  if (goodPacket)
+    rssiCounter++;
+  
+  if ((long)(micros() - nextRssiCalcTime) >= 0 ) {      // Interval end
     // RSSI is the based on hte expected packet rate for the interval vs. actiual packets.  255 is 100% of the expected rate.
     nextRssiCalcTime = micros() + TELEMETRY_RSSI_CALC_INTERVAL;
     // calculate rssi as a ratio of expected to actual packets as a percent then map to actual range

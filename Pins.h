@@ -49,6 +49,9 @@
 #define BIND_BUTTON_PIN           A3
 #define LED_PIN                   A1
 
+#define TELEMETRY_ANALOG_INPUT_1  A6
+#define TELEMETRY_ANALOG_INPUT_2  A7
+
 #ifdef USE_IRQ_FOR_READ
 // configure A2 for radio IRQ 
 

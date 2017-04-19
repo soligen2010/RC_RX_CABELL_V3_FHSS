@@ -66,11 +66,11 @@
 #define RESYNC_TIME_OUT                 ((uint32_t)2000000)                                                      //  Go to resync if no packet recieved in 2 seconds
 #define RESYNC_WAIT_MICROS              (((((uint32_t)CABELL_RADIO_CHANNELS)*5)+2) * EXPECTED_PACKET_INTERVAL)   // when syncing listen on each channel for slightly longer than the time it takes to cycle through all channels
 
+#define DO_NOT_SOFT_REBIND   0xAA
+
 #define TELEMETRY_RSSI_CALC_INTERVAL    ((uint32_t)250000)    // number of microseconds to wait before re-calulating RSSI.  RSSI is based on packet rate during this interval
 #define TELEMETRY_RSSI_MIN_VALUE        0                     // The lowest possible RSSI value = zero packet rate
 #define TELEMETRY_RSSI_MAX_VALUE        255                     // The highest possible RSSI value = 100% packet rate
-
-#define DO_NOT_SOFT_REBIND   0xAA
 
 #define SERVO_OUTPUT_PINS         {PITCH_PIN,ROLL_PIN,YAW_PIN,THROTTLE_PIN,AUX1_PIN,AUX2_PIN,AUX3_PIN,AUX4_PIN}
 
@@ -101,7 +101,8 @@ typedef struct {
                            *   mask 0x80>>7   Unused by RX.  Contains max power override flag for Multiprotocol T module
                            */  
    uint8_t  modelNum;
-   uint16_t checkSum; 
+   uint8_t  checkSum_LSB; 
+   uint8_t  checkSum_MSB; 
    uint8_t  payloadValue [CABELL_PAYLOAD_BYTES] = {0}; //12 bits per channel value, unsigned
 } CABELL_RxTxPacket_t;   
 
@@ -126,7 +127,7 @@ void loadFailSafeDefaultValues();
 void setFailSafeValues(uint16_t newFailsafeValues[]);
 void setNewDataRate();
 void sendTelemetryPacket();
-uint8_t calculateRSSI();
+uint8_t calculateRSSI(bool goodPacket);
 
 #endif
 
