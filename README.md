@@ -92,15 +92,16 @@ typedef struct {
    } RxMode;
    uint8_t  reserved = 0;
    uint8_t  option;
-                          /*   mask 0x0F    : Channel reduction.  The number of channels to not send 
-                           *                  (subtracted frim the 16 max channels) at least 4 are always sent
-                           *   mask 0x70>>4 : Reciever outout mode
-                           *                  1 = Single PPM on individual pins for each channel 
-                           *                  2 = SUM PPM on channel 1 pin
-                           *   mask 0x80>>7   Unused by RX.  Contains max power override flag
+                          /*   mask 0x0F    : Channel reduction.  The number of channels to not send (subtracted frim the 16 max channels) at least 4 are always sent
+                           *   mask 0x30>>4 : Reciever outout mode
+                           *                  0 = Single PPM on individual pins for each channel 
+                           *                  1 = SUM PPM on channel 1 pin
+                           *   mask 0x40>>6   Unused 
+                           *   mask 0x80>>7   Unused by RX.  Contains max power override flag for Multiprotocol T module
                            */  
    uint8_t  modelNum;
-   uint16_t checkSum; 
+   uint8_t  checkSum_LSB;   // Checksum least significant byte
+   uint8_t  checkSum_MSB;   // Checksum most significant byte
    uint8_t  payloadValue [24] = {0}; //12 bits per channel value, unsigned
 } CABELL_RxTxPacket_t;   
 ```
