@@ -52,22 +52,17 @@
 #define TELEMETRY_ANALOG_INPUT_1  A6
 #define TELEMETRY_ANALOG_INPUT_2  A7
 
-#ifdef USE_IRQ_FOR_READ
 // configure A2 for radio IRQ 
-
-    #define RADIO_IRQ_PIN          A2 
-
-    #define RADIO_IRQ_PIN_bit      2           //A2 = PC2
-    #define RADIO_IRQ_port         PORTC
-    #define RADIO_IRQ_ipr          PINC
-    #define RADIO_IRQ_ddr          DDRC
-    #define RADIO_IRQ_PIN_MASK     _BV(RADIO_IRQ_PIN_bit)
-    #define RADIO_IRQ_SET_INPUT    RADIO_IRQ_ddr &= ~RADIO_IRQ_PIN_MASK
-    #define RADIO_IRQ_SET_OUTPUT   RADIO_IRQ_ddr |=  RADIO_IRQ_PIN_MASK
-    #define RADIO_IRQ_SET_PULLUP   RADIO_IRQ_port |= RADIO_IRQ_PIN_MASK
-    #define IS_RADIO_IRQ_on ( (RADIO_IRQ_ipr & RADIO_IRQ_PIN_MASK) == 0x00 )
-
-#endif
+#define RADIO_IRQ_PIN          A2 
+#define RADIO_IRQ_PIN_bit      2           //A2 = PC2
+#define RADIO_IRQ_port         PORTC
+#define RADIO_IRQ_ipr          PINC
+#define RADIO_IRQ_ddr          DDRC
+#define RADIO_IRQ_PIN_MASK     _BV(RADIO_IRQ_PIN_bit)
+#define RADIO_IRQ_SET_INPUT    RADIO_IRQ_ddr &= ~RADIO_IRQ_PIN_MASK
+#define RADIO_IRQ_SET_OUTPUT   RADIO_IRQ_ddr |=  RADIO_IRQ_PIN_MASK
+#define RADIO_IRQ_SET_PULLUP   RADIO_IRQ_port |= RADIO_IRQ_PIN_MASK
+#define IS_RADIO_IRQ_on ( (RADIO_IRQ_ipr & RADIO_IRQ_PIN_MASK) == 0x00 )
 
 #endif
 

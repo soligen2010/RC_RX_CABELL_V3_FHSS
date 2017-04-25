@@ -74,14 +74,6 @@
 
 #define SERVO_OUTPUT_PINS         {PITCH_PIN,ROLL_PIN,YAW_PIN,THROTTLE_PIN,AUX1_PIN,AUX2_PIN,AUX3_PIN,AUX4_PIN}
 
-/*  Uncommented, USE_IRQ_FOR_READ uses the NRF24L01+ IRQ pin to signal when a packet is recieved
- *  if commented the IRQ will not be used and the NRF24L01+ will be constantly polled
- *  to see if a packet has been recieved.  Constant polling via SPI may add noise affecting
- *  reliabilty, so using the IRQ is recommended.
- *  Comment this only if the IRQ pin is not connected
- */
-#define USE_IRQ_FOR_READ
-
 typedef struct {
    enum RxMode_t : uint8_t {   // Note bit 8 is used to indicate if the packet is the first of 2 on the channel.  Mask out this bit before using the enum
          normal                 = 0,

@@ -57,12 +57,9 @@ uint8_t radioChannel[CABELL_RADIO_CHANNELS];
 volatile uint8_t currentOutputMode = 255;    // initialize to an unused mode
 volatile uint8_t nextOutputMode = 255;       // initialize to an unused mode
 
-#ifdef USE_IRQ_FOR_READ
-  volatile bool packetReady = false;
-  volatile static unsigned long lastRadioPacketeRecievedTime = 0;
-  volatile static unsigned long nextAutomaticChannelSwitch =0;
-
-#endif
+volatile bool packetReady = false;
+volatile static unsigned long lastRadioPacketeRecievedTime = 0;
+volatile static unsigned long nextAutomaticChannelSwitch =0;
 
 MyServo channelServo[RX_NUM_CHANNELS];
 
@@ -119,16 +116,14 @@ void setupReciever() {
   setNewDataRate();
   radio.setAutoAck(0);
 
-  #ifdef USE_IRQ_FOR_READ
-    radio.maskIRQ(true,true,true);         // Mask all interuupts.  RX interrupt (the only one we use) gets turned on after channel change
-    pinMode(RADIO_IRQ_PIN,INPUT_PULLUP);
-    
-    //setup pin change interrupt
-    cli();    // switch interrupts off while messing with their settings  
-    PCICR =0x02;          // Enable PCINT1 interrupt
-    PCMSK1 = RADIO_IRQ_PIN_MASK;
-    sei();
-  #endif
+  radio.maskIRQ(true,true,true);         // Mask all interuupts.  RX interrupt (the only one we use) gets turned on after channel change
+  pinMode(RADIO_IRQ_PIN,INPUT_PULLUP);
+  
+  //setup pin change interrupt
+  cli();    // switch interrupts off while messing with their settings  
+  PCICR =0x02;          // Enable PCINT1 interrupt
+  PCMSK1 = RADIO_IRQ_PIN_MASK;
+  sei();
   
   radio.openReadingPipe(1,radioPipeID);
   radio.startListening();
@@ -138,12 +133,9 @@ void setupReciever() {
   Serial.print("Radio ID: ");Serial.print((uint32_t)(radioPipeID>>32)); Serial.print("    ");Serial.println((uint32_t)((radioPipeID<<32)>>32));
   Serial.print("Current Model Number: ");Serial.println(currentModel);
 
-  #ifdef USE_IRQ_FOR_READ
-    nextAutomaticChannelSwitch = micros() + ((CABELL_RADIO_CHANNELS+2) * 3000);
-  #endif
+  nextAutomaticChannelSwitch = micros() + ((CABELL_RADIO_CHANNELS+2) * 3000);
 }
 
-#ifdef USE_IRQ_FOR_READ
 //--------------------------------------------------------------------------------------------------------------------------
 ISR(PCINT1_vect) {
   if (!digitalRead(RADIO_IRQ_PIN))  {  // pulled low when packet is recieved
@@ -154,7 +146,6 @@ ISR(PCINT1_vect) {
 
   }
 }
-#endif
 
 //--------------------------------------------------------------------------------------------------------------------------
 void outputChannels() {
@@ -192,9 +183,7 @@ void outputChannels() {
 void setNextRadioChannel(bool sendTelemetry) {
   static int currentChannel = CABELL_RADIO_MIN_CHANNEL_NUM;  // Initializes the channel sequence.
   
-  #ifdef USE_IRQ_FOR_READ
-    //radio.maskIRQ(true,true,true);         // Mask all interuupts.  RX interrupt (the only one we use) gets turned on after channel change
-  #endif
+  radio.maskIRQ(true,true,true);         // Mask all interuupts.  RX interrupt (the only one we use) gets turned on after channel change
   radio.stopListening();
   radio.closeReadingPipe(1);
   if (sendTelemetry) {
@@ -204,20 +193,13 @@ void setNextRadioChannel(bool sendTelemetry) {
   radio.setChannel(currentChannel);
   radio.openReadingPipe(1,radioPipeID);
   radio.startListening();
-  #ifdef USE_IRQ_FOR_READ
-    //radio.flush_rx();  
-    radio.maskIRQ(true,true,false);         // Turn on RX interrupt
-  #endif
+  radio.maskIRQ(true,true,false);         // Turn on RX interrupt
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 bool getPacket() {  
   static unsigned long lastPacketTime = 0;  
   static bool inititalGoodPacketRecieved = false;
-  #ifndef USE_IRQ_FOR_READ
-    static unsigned long lastRadioPacketeRecievedTime = 0;
-    static unsigned long nextAutomaticChannelSwitch = micros() + ((CABELL_RADIO_CHANNELS+2) * 3000);
-  #endif
   bool goodPacket_rx = false;
 
   // process bind button to see if it was pressed, whicn indicates to save failsafe data
@@ -225,11 +207,7 @@ bool getPacket() {
   setFailSafeButton->service();
   
   // Wait for the radio to get a packet, or the timeout for the current radio channel occurs
-  #ifdef USE_IRQ_FOR_READ
   if (!packetReady) {
-  #else
-  if (!radio.available()) {
-  #endif
     if ((long)(micros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet eas missed, go to the next channel
       setNextRadioChannel(false);                                   // don't send telemetry when packet missed
       //Serial.println("miss");
@@ -245,18 +223,8 @@ bool getPacket() {
         checkFailsafeDisarmTimeout(lastPacketTime);   // at each timeout, check for failsafe and disarm.  When disarmed TX must send min throttle to re-arm.
       }
     }
-    #ifndef USE_IRQ_FOR_READ
-      delayMicroseconds(20);   // The RF24 library has built in 5uS delay to limit SPI poling.  Adding more delay as there are some indications that too much SPI activity could casue issues. 
-                               // the library's 5uS is likely enough, but since it doesn't need to be that fasr in this use case, slow it down just in case it may help reliability.
-    #endif
   }  else {
-    #ifdef USE_IRQ_FOR_READ
-      packetReady = false;
-    #else  
-      lastRadioPacketeRecievedTime = micros();   //Use this time to calculate the next expected channel when we miss packets
-      //Serial.println(lastRadioPacketeRecievedTime);
-      nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + INITIAL_PACKET_TIMEOUT; 
-    #endif
+     packetReady = false;
     goodPacket_rx = readAndProcessPacket();
     if (goodPacket_rx) {
       inititalGoodPacketRecieved = true;
