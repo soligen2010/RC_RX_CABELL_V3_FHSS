@@ -61,6 +61,9 @@ volatile bool packetReady = false;
 volatile static unsigned long lastRadioPacketeRecievedTime = 0;
 volatile static unsigned long nextAutomaticChannelSwitch =0;
 
+volatile int16_t analogValue[2] = {0,0};
+volatile bool ADC_Busy = false;
+
 MyServo channelServo[RX_NUM_CHANNELS];
 
 ClickEncoder* setFailSafeButton;
@@ -210,6 +213,7 @@ bool getPacket() {
   if (!packetReady) {
     if ((long)(micros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet eas missed, go to the next channel
       setNextRadioChannel(false);                                   // don't send telemetry when packet missed
+      StartNextADCConversion();    //Get a conversion for analog telemetry inputs. Even when packet missed to keep up on current values
       //Serial.println("miss");
       if ((long)(nextAutomaticChannelSwitch - lastRadioPacketeRecievedTime) > RESYNC_TIME_OUT) {  // if a long time passed, increase timeout duration to re-sync with the TX
         nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
@@ -231,6 +235,7 @@ bool getPacket() {
       lastPacketTime = millis();
       failSafeDisplayFlag = true;
     }
+    StartNextADCConversion();    //Get a conversion or analog telemetry inputs.
   }
   return goodPacket_rx;
 }
@@ -587,12 +592,15 @@ void sendTelemetryPacket() {
  
   static int8_t packetCounter = 0;  // this is only used for toggleing bit
   packetCounter++;
-  sendPacket[0] &= 0x7F;               // clear 8th bit
-  sendPacket[0] |= packetCounter<<7;   // This causes the 8th bit of the first byte to toggle with each xmit so consecrutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
-  sendPacket[1] = calculateRSSI(false);  // Passing false will return the RSSI without affecting the RSSI calculation.  Another call to calulateRSSI elsehere will pass true for a good packet to maintain the RSSI value.
-  
-  sendPacket[3] = analogRead(TELEMETRY_ANALOG_INPUT_1)/4;  // Send a 8 bit value (0 to 255) of the analog input.  Can be used for Lipo coltage or other analog input for telemetry
-  sendPacket[4] = analogRead(TELEMETRY_ANALOG_INPUT_2)/4;  // Send a 8 bit value (0 to 255) of the analog input.  Can be used for Lipo coltage or other analog input for telemetry
+  sendPacket[0] &= 0x7F;                 // clear 8th bit
+  sendPacket[0] |= packetCounter<<7;     // This causes the 8th bit of the first byte to toggle with each xmit so consecutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
+  sendPacket[1] = calculateRSSI(false);  // Passing false will return the RSSI without affecting the RSSI calculation.  Another call to calulateRSSI elsewhere will pass true for a good packet to maintain the RSSI value.
+  sendPacket[2] = analogValue[0]/4;      // Send a 8 bit value (0 to 255) of the analog input.  Can be used for Lipo voltage or other analog input for telemetry
+  sendPacket[3] = analogValue[1]/4;      // Send a 8 bit value (0 to 255) of the analog input.  Can be used for Lipo voltage or other analog input for telemetry
+
+  //Serial.print(analogValue[0]);
+  //Serial.print(" ");
+  //Serial.println(analogValue[1]);
 
   uint8_t packetSize =  sizeof(sendPacket);
   radio.startFastWrite( &sendPacket[0], packetSize, 0); 
@@ -628,6 +636,30 @@ uint8_t calculateRSSI(bool goodPacket) {
     rssiCounter = 0;
   }
   return rssi;
+}
+
+ISR (ADC_vect) { ADC_Processing(); }
+
+// based on ADC Interrupt example from https://www.gammon.com.au/adc
+void ADC_Processing() {             //Reads ADC value then configures next converion. Alternates between pins A6 and A7
+  static byte adcPin = 7;
+  
+  analogValue[adcPin - 6] = ADC;
+
+  adcPin = (adcPin==7) ? 6 : 7;   // Choose next pin to read
+
+  ADCSRA =  bit (ADEN);                      // turn ADC on
+  ADCSRA |= bit (ADPS0) |  bit (ADPS1) | bit (ADPS2);  // Prescaler of 128
+  ADMUX  =  bit (REFS0) | (adcPin & 0x07);    // AVcc and select input port
+
+  ADC_Busy = false;
+}
+
+void StartNextADCConversion() {
+  if (!ADC_Busy) {
+    ADC_Busy = true;
+    ADCSRA |= bit (ADSC) | bit (ADIE);   //Start next conversion  
+  }
 }
 
 
