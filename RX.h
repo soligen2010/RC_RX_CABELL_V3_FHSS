@@ -120,6 +120,8 @@ void setFailSafeValues(uint16_t newFailsafeValues[]);
 void setNewDataRate();
 void sendTelemetryPacket();
 uint8_t calculateRSSI(bool goodPacket);
+void ADC_Processing();
+void StartNextADCConversion();
 
 #endif
 

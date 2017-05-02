@@ -137,6 +137,8 @@ void setupReciever() {
   Serial.print("Current Model Number: ");Serial.println(currentModel);
 
   nextAutomaticChannelSwitch = micros() + ((CABELL_RADIO_CHANNELS+2) * 3000);
+
+  ADC_Processing();   // Priming call so that the first conversion works
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -603,6 +605,7 @@ void sendTelemetryPacket() {
 
   uint8_t packetSize =  sizeof(sendPacket);
   radio.startFastWrite( &sendPacket[0], packetSize, 0); 
+
       // calculate transmit time based on packet size and data rate of 1MB per sec
       // This is done becasue polling the status register during xmit to see when xmit is done casued issues sometimes.
       // bits = packstsize * 8  +  73 bits overhead
