@@ -32,7 +32,7 @@
 #include "Rx_Tx_Util.h"
 #include "SUM_PPM.h"
 #include "MyServo.h"    // hacked to remove timer1 ISR - must call this in my own ISR
-#include <ClickEncoder.h>    // use liubrary from github https://github.com/soligen2010/encoder
+#include <ClickEncoder.h>    // use library from github https://github.com/soligen2010/encoder
 
 RF24 radio(RADIO_CE_PIN,RADIO_CSN_PIN);
   
@@ -119,7 +119,7 @@ void setupReciever() {
   setNewDataRate();
   radio.setAutoAck(0);
 
-  radio.maskIRQ(true,true,true);         // Mask all interuupts.  RX interrupt (the only one we use) gets turned on after channel change
+  radio.maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
   pinMode(RADIO_IRQ_PIN,INPUT_PULLUP);
   
   //setup pin change interrupt
@@ -186,7 +186,7 @@ void outputChannels() {
 void setNextRadioChannel(bool sendTelemetry) {
   static int currentChannel = CABELL_RADIO_MIN_CHANNEL_NUM;  // Initializes the channel sequence.
   
-  radio.maskIRQ(true,true,true);         // Mask all interuupts.  RX interrupt (the only one we use) gets turned on after channel change
+  radio.maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
   radio.stopListening();
   radio.closeReadingPipe(1);
   if (sendTelemetry) {
@@ -206,12 +206,12 @@ bool getPacket() {
   bool goodPacket_rx = false;
 
   // process bind button to see if it was pressed, whicn indicates to save failsafe data
-  // normally this is done in a timer, but doing it in the loop so it doesn't interfere with the pin change timer.
+  // normally this type of maintenance routine is done in a timer interrupt, but doing it in the loop so it doesn't interfere with the pin change timer.
   setFailSafeButton->service();
   
   // Wait for the radio to get a packet, or the timeout for the current radio channel occurs
   if (!packetReady) {
-    if ((long)(micros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet eas missed, go to the next channel
+    if ((long)(micros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet was missed, go to the next channel
       setNextRadioChannel(false);                                   // don't send telemetry when packet missed
       StartNextADCConversion();    //Get a conversion for analog telemetry inputs. Even when packet missed to keep up on current values
       //Serial.println("miss");
@@ -604,17 +604,17 @@ void sendTelemetryPacket() {
   uint8_t packetSize =  sizeof(sendPacket);
   radio.startFastWrite( &sendPacket[0], packetSize, 0); 
       // calculate transmit time based on packet size and data rate of 1MB per sec
-      // This is done becasue polling the status register during xmit to see when xmit is done casued issues some times.
+      // This is done becasue polling the status register during xmit to see when xmit is done casued issues sometimes.
       // bits = packstsize * 8  +  73 bits overhead
       // at 1 MB per sec, one bit is 1 uS
-      // then add 160 uS which is 130 uS to begin the xmit and 30 uS fudge factor
-      delayMicroseconds(((unsigned long)packetSize * 8ul)  +  73ul + 160ul)   ;
+      // then add 140 uS which is 130 uS to begin the xmit and 10 uS fudge factor
+      delayMicroseconds(((unsigned long)packetSize * 8ul)  +  73ul + 140ul)   ;
 }
 
 
 //--------------------------------------------------------------------------------------------------------------------------
 uint8_t calculateRSSI(bool goodPacket) {
-  // Passign in true for a good packet will improve the RSSI in each interval.
+  // Passing in true for a good packet will improve the RSSI in each interval.
   // This can additionally be called at any time with false to just return the current RSSI and it wont affect calculation (but may trigger the interval end logic) 
 
   static uint8_t rssi = TELEMETRY_RSSI_MAX_VALUE;                                           // Initialize to perfect RSSI until it can be calcualted
