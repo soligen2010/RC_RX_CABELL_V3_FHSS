@@ -62,9 +62,9 @@
 
 // FHSS parameters
 #define EXPECTED_PACKET_INTERVAL        ((uint32_t)3000)
-#define INITIAL_PACKET_TIMEOUT          (EXPECTED_PACKET_INTERVAL + 250)
+#define INITIAL_PACKET_TIMEOUT          (EXPECTED_PACKET_INTERVAL + 350ul)
 #define RESYNC_TIME_OUT                 ((uint32_t)2000000)                                                      //  Go to resync if no packet recieved in 2 seconds
-#define RESYNC_WAIT_MICROS              (((((uint32_t)CABELL_RADIO_CHANNELS)*5)+2) * EXPECTED_PACKET_INTERVAL)   // when syncing listen on each channel for slightly longer than the time it takes to cycle through all channels
+#define RESYNC_WAIT_MICROS              (((((uint32_t)CABELL_RADIO_CHANNELS)*5ul)+8ul) * EXPECTED_PACKET_INTERVAL)   // when syncing listen on each channel for slightly longer than the time it takes to cycle through all channels
 
 #define DO_NOT_SOFT_REBIND   0xAA
 
