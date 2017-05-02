@@ -514,7 +514,7 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
     case CABELL_RxTxPacket_t::RxMode_t::normal :  if (modelNum == currentModel) {
                                                     digitalWrite(LED_PIN, LOW);
                                                     failSafeValuesHaveBeenSet = false;             // Reset when not in setFailSafe mode so next time failsafe is to be set it will take
-                                                    if (!throttleArmed && (tempHoldValues[THROTTLE_CHANNEL] <= CHANNEL_MIN_VALUE)) { 
+                                                    if (!throttleArmed && (tempHoldValues[THROTTLE_CHANNEL] <= CHANNEL_MIN_VALUE + 10)) { 
                                                       Serial.println("Throttle Armed");
                                                       throttleArmed = true;
                                                     }
