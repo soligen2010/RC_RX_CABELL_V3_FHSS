@@ -405,7 +405,7 @@ void setFailSafeValues(uint16_t newFailsafeValues[]) {
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-bool validateChecksum(CABELL_RxTxPacket_t packet, uint8_t maxPayloadValueIndex) {
+bool validateChecksum(CABELL_RxTxPacket_t const& packet, uint8_t maxPayloadValueIndex) {
   //caculate checksum and validate
   uint16_t packetSum = packet.modelNum + packet.option + packet.RxMode + packet.reserved;    
     
@@ -537,7 +537,7 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-bool decodeChannelValues(CABELL_RxTxPacket_t RxPacket, uint8_t channelsRecieved, uint16_t tempHoldValues[]) {
+bool decodeChannelValues(CABELL_RxTxPacket_t const& RxPacket, uint8_t channelsRecieved, uint16_t tempHoldValues[]) {
   // decode the 12 bit numbers to temp array. 
   bool packet_rx = true;
   int payloadIndex = 0;
