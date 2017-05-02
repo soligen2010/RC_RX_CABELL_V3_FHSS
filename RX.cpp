@@ -436,6 +436,11 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   
   radio.read( &RxPacket,  sizeof(RxPacket) );
 
+  // Remove 8th bit from RxMode because this is a toggle bit that is not included in the checksum
+  // This toggle with each xmit so consecrutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
+  uint8_t* p = reinterpret_cast<uint8_t*>(&RxPacket.RxMode);
+  *p &= 0x7F;  //ensure 8th bit is not set.  This bit is not included in checksum
+
   setNextRadioChannel((RxPacket.RxMode==CABELL_RxTxPacket_t::RxMode_t::normalWithTelemetry)?true:false);                   // Send telemetry if in telemetry mode.  Doing this as soon as possible to keep timing as tight as possible
   
   uint8_t channelReduction = constrain((RxPacket.option & CABELL_OPTION_MASK_CHANNEL_REDUCTION),0,CABELL_NUM_CHANNELS-CABELL_MIN_CHANNELS);  // Must be at least 4 channels, so cap at 12
@@ -443,12 +448,6 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   uint8_t maxPayloadValueIndex = sizeof(RxPacket.payloadValue) - (sizeof(RxPacket) - packetSize);
   uint8_t channelsRecieved = CABELL_NUM_CHANNELS - channelReduction; 
   
-
-  // Remove 8th bit from RxMode becasye this is a toggle bit that is not included in the checksum
-  // This toggle with each xmit so consecrutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
-  uint8_t* p = reinterpret_cast<uint8_t*>(&RxPacket.RxMode);
-  *p &= 0x7F;  //ensure 8th bit is not set.  This bit is not included in checksum
-
   packet_rx = validateChecksum(RxPacket, maxPayloadValueIndex);
 
   if (packet_rx)
