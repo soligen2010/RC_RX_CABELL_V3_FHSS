@@ -49,8 +49,8 @@
 #define BIND_BUTTON_PIN           A3
 #define LED_PIN                   A1
 
-#define TELEMETRY_ANALOG_INPUT_1  A6
-#define TELEMETRY_ANALOG_INPUT_2  A7
+#define TELEMETRY_ANALOG_INPUT_1  6   // Pin A6
+#define TELEMETRY_ANALOG_INPUT_2  7   // Pin A7
 
 // configure A2 for radio IRQ 
 #define RADIO_IRQ_PIN          A2 
@@ -62,7 +62,7 @@
 #define RADIO_IRQ_SET_INPUT    RADIO_IRQ_ddr &= ~RADIO_IRQ_PIN_MASK
 #define RADIO_IRQ_SET_OUTPUT   RADIO_IRQ_ddr |=  RADIO_IRQ_PIN_MASK
 #define RADIO_IRQ_SET_PULLUP   RADIO_IRQ_port |= RADIO_IRQ_PIN_MASK
-#define IS_RADIO_IRQ_on ( (RADIO_IRQ_ipr & RADIO_IRQ_PIN_MASK) == 0x00 )
+#define IS_RADIO_IRQ_on       ((RADIO_IRQ_ipr & RADIO_IRQ_PIN_MASK) == 0x00)
 
 #endif
 

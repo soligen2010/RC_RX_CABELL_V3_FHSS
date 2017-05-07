@@ -34,6 +34,7 @@
 #include "MyServo.h"    // hacked to remove timer1 ISR - must call this in my own ISR
 #include <ClickEncoder.h>    // use library from github https://github.com/soligen2010/encoder
 
+
 RF24 radio(RADIO_CE_PIN,RADIO_CSN_PIN);
   
 uint16_t channelValues [CABELL_NUM_CHANNELS];
@@ -58,11 +59,10 @@ volatile uint8_t currentOutputMode = 255;    // initialize to an unused mode
 volatile uint8_t nextOutputMode = 255;       // initialize to an unused mode
 
 volatile bool packetReady = false;
-volatile static unsigned long lastRadioPacketeRecievedTime = 0;
-volatile static unsigned long nextAutomaticChannelSwitch =0;
+volatile unsigned long lastRadioPacketeRecievedTime = 0;
 
-volatile int16_t analogValue[2] = {0,0};
-volatile bool ADC_Busy = false;
+bool telemetryEnabled = false;
+int16_t analogValue[2] = {0,0};
 
 MyServo channelServo[RX_NUM_CHANNELS];
 
@@ -120,7 +120,8 @@ void setupReciever() {
   radio.setAutoAck(0);
 
   radio.maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
-  pinMode(RADIO_IRQ_PIN,INPUT_PULLUP);
+  RADIO_IRQ_SET_INPUT;
+  RADIO_IRQ_SET_PULLUP;
   
   //setup pin change interrupt
   cli();    // switch interrupts off while messing with their settings  
@@ -135,20 +136,14 @@ void setupReciever() {
   
   Serial.print("Radio ID: ");Serial.print((uint32_t)(radioPipeID>>32)); Serial.print("    ");Serial.println((uint32_t)((radioPipeID<<32)>>32));
   Serial.print("Current Model Number: ");Serial.println(currentModel);
-
-  nextAutomaticChannelSwitch = micros() + ((CABELL_RADIO_CHANNELS+2) * 3000);
-
-  ADC_Processing();   // Priming call so that the first conversion works
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 ISR(PCINT1_vect) {
-  if (!digitalRead(RADIO_IRQ_PIN))  {  // pulled low when packet is recieved
+  if (IS_RADIO_IRQ_on)  {  // pulled low when packet is recieved
     packetReady = true;
     lastRadioPacketeRecievedTime = micros();   //Use this time to calculate the next expected channel when we miss packets
     //Serial.println(lastRadioPacketeRecievedTime);
-    nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + INITIAL_PACKET_TIMEOUT; 
-
   }
 }
 
@@ -185,13 +180,13 @@ void outputChannels() {
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-void setNextRadioChannel(bool sendTelemetry) {
+void setNextRadioChannel() {
   static int currentChannel = CABELL_RADIO_MIN_CHANNEL_NUM;  // Initializes the channel sequence.
   
   radio.maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
   radio.stopListening();
   radio.closeReadingPipe(1);
-  if (sendTelemetry) {
+  if (telemetryEnabled) {
     sendTelemetryPacket();
   }
   currentChannel = getNextChannel (radioChannel, CABELL_RADIO_CHANNELS, currentChannel);
@@ -206,6 +201,8 @@ bool getPacket() {
   static unsigned long lastPacketTime = 0;  
   static bool inititalGoodPacketRecieved = false;
   bool goodPacket_rx = false;
+  static unsigned long nextAutomaticChannelSwitch = micros() + RESYNC_WAIT_MICROS;
+
 
   // process bind button to see if it was pressed, whicn indicates to save failsafe data
   // normally this type of maintenance routine is done in a timer interrupt, but doing it in the loop so it doesn't interfere with the pin change timer.
@@ -214,8 +211,7 @@ bool getPacket() {
   // Wait for the radio to get a packet, or the timeout for the current radio channel occurs
   if (!packetReady) {
     if ((long)(micros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet was missed, go to the next channel
-      setNextRadioChannel(false);                                   // don't send telemetry when packet missed
-      StartNextADCConversion();    //Get a conversion for analog telemetry inputs. Even when packet missed to keep up on current values
+      setNextRadioChannel();               
       //Serial.println("miss");
       if ((long)(nextAutomaticChannelSwitch - lastRadioPacketeRecievedTime) > RESYNC_TIME_OUT) {  // if a long time passed, increase timeout duration to re-sync with the TX
         nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
@@ -230,14 +226,15 @@ bool getPacket() {
       }
     }
   }  else {
+     nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + INITIAL_PACKET_TIMEOUT; 
      packetReady = false;
-    goodPacket_rx = readAndProcessPacket();
-    if (goodPacket_rx) {
-      inititalGoodPacketRecieved = true;
-      lastPacketTime = millis();
-      failSafeDisplayFlag = true;
+     goodPacket_rx = readAndProcessPacket();
+     if (goodPacket_rx) {
+       inititalGoodPacketRecieved = true;
+       lastPacketTime = millis();
+       //Serial.println(lastPacketTime);
+       failSafeDisplayFlag = true;
     }
-    StartNextADCConversion();    //Get a conversion or analog telemetry inputs.
   }
   return goodPacket_rx;
 }
@@ -443,7 +440,9 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   uint8_t* p = reinterpret_cast<uint8_t*>(&RxPacket.RxMode);
   *p &= 0x7F;  //ensure 8th bit is not set.  This bit is not included in checksum
 
-  setNextRadioChannel((RxPacket.RxMode==CABELL_RxTxPacket_t::RxMode_t::normalWithTelemetry)?true:false);                   // Send telemetry if in telemetry mode.  Doing this as soon as possible to keep timing as tight as possible
+  // Set Telemtry Enabled before setting next channel so telemetry packet is sent when it should be
+  telemetryEnabled = (RxPacket.RxMode==CABELL_RxTxPacket_t::RxMode_t::normalWithTelemetry)?true:false;
+  setNextRadioChannel();                   // Send telemetry if in telemetry mode.  Doing this as soon as possible to keep timing as tight as possible
   
   uint8_t channelReduction = constrain((RxPacket.option & CABELL_OPTION_MASK_CHANNEL_REDUCTION),0,CABELL_NUM_CHANNELS-CABELL_MIN_CHANNELS);  // Must be at least 4 channels, so cap at 12
   uint8_t packetSize = sizeof(RxPacket) - ((((channelReduction - (channelReduction%2))/ 2)) * 3);      // reduce 3 bytes per 2 channels, but not last channel if it is odd
@@ -468,7 +467,6 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   else
   {
     Serial.println("RX Pckt Err");
-    setNextRadioChannel(false);                   // Dont send telemetry if the packet was in error
   }  
 
   calculateRSSI(packet_rx);   // This will maintain the RSSI based on if the packet was good or not.
@@ -640,29 +638,23 @@ uint8_t calculateRSSI(bool goodPacket) {
   return rssi;
 }
 
-ISR (ADC_vect) { ADC_Processing(); }
-
 // based on ADC Interrupt example from https://www.gammon.com.au/adc
 void ADC_Processing() {             //Reads ADC value then configures next converion. Alternates between pins A6 and A7
-  static byte adcPin = 7;
+  static byte adcPin = TELEMETRY_ANALOG_INPUT_1;
+
+  if (bit_is_clear(ADCSRA, ADSC)) {
+    analogValue[(adcPin==TELEMETRY_ANALOG_INPUT_1) ? 0 : 1] = ADC;  
   
-  analogValue[adcPin - 6] = ADC;
-
-  adcPin = (adcPin==7) ? 6 : 7;   // Choose next pin to read
-
-  ADCSRA =  bit (ADEN);                      // turn ADC on
-  ADCSRA |= bit (ADPS0) |  bit (ADPS1) | bit (ADPS2);  // Prescaler of 128
-  ADMUX  =  bit (REFS0) | (adcPin & 0x07);    // AVcc and select input port
-
-  ADC_Busy = false;
-}
-
-void StartNextADCConversion() {
-  if (!ADC_Busy) {
-    ADC_Busy = true;
-    ADCSRA |= bit (ADSC) | bit (ADIE);   //Start next conversion  
+    adcPin = (adcPin==TELEMETRY_ANALOG_INPUT_2) ? TELEMETRY_ANALOG_INPUT_1 : TELEMETRY_ANALOG_INPUT_2;   // Choose next pin to read
+  
+    ADCSRA =  bit (ADEN);                      // turn ADC on
+    ADCSRA |= bit (ADPS0) |  bit (ADPS1) | bit (ADPS2);  // Prescaler of 128
+    ADMUX  =  bit (REFS0) | (adcPin & 0x07);    // AVcc and select input port
+  
+    ADCSRA |= bit (ADSC);   //Start next conversion 
   }
 }
+
 
 
 

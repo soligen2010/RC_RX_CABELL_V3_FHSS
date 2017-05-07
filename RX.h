@@ -68,9 +68,9 @@
 
 #define DO_NOT_SOFT_REBIND   0xAA
 
-#define TELEMETRY_RSSI_CALC_INTERVAL    ((uint32_t)250000)    // number of microseconds to wait before re-calulating RSSI.  RSSI is based on packet rate during this interval
+#define TELEMETRY_RSSI_CALC_INTERVAL    ((uint32_t)500000)    // number of microseconds to wait before re-calulating RSSI.  RSSI is based on packet rate during this interval
 #define TELEMETRY_RSSI_MIN_VALUE        0                     // The lowest possible RSSI value = zero packet rate
-#define TELEMETRY_RSSI_MAX_VALUE        255                     // The highest possible RSSI value = 100% packet rate
+#define TELEMETRY_RSSI_MAX_VALUE        100                     // The highest possible RSSI value = 100% packet rate
 
 #define SERVO_OUTPUT_PINS         {PITCH_PIN,ROLL_PIN,YAW_PIN,THROTTLE_PIN,AUX1_PIN,AUX2_PIN,AUX3_PIN,AUX4_PIN}
 
@@ -87,10 +87,12 @@ typedef struct {
    uint8_t  option;
                           /*   mask 0x0F    : Channel reduction.  The number of channels to not send (subtracted frim the 16 max channels) at least 4 are always sent
                            *   mask 0x30>>4 : Reciever outout mode
-                           *                  0 = Single PPM on individual pins for each channel 
-                           *                  1 = SUM PPM on channel 1 pin
-                           *   mask 0x40>>6   Unused 
-                           *   mask 0x80>>7   Unused by RX.  Contains max power override flag for Multiprotocol T module
+                           *                  0 (00) = Single PPM on individual pins for each channel 
+                           *                  1 (01) = SUM PPM on channel 1 pin
+                           *                  2 (10) = Future use.  Reserved for SBUS output
+                           *                  3 (11) = Unused
+                           *   mask 0x40>>6   Contains max power override flag for Multiprotocol TX module. Also sent to RX
+                           *   mask 0x80>>7   Unused 
                            */  
    uint8_t  modelNum;
    uint8_t  checkSum_LSB;   // Checksum least significant byte
@@ -106,7 +108,7 @@ void outputFailSafeValues(bool callOutputChannels);
 void outputChannels();
 void attachServoPins();
 void detachServoPins();
-void setNextRadioChannel(bool sendTelemetry);
+void setNextRadioChannel();
 void checkFailsafeDisarmTimeout(unsigned long lastPacketTime);
 void unbindReciever();
 void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]);
@@ -121,7 +123,6 @@ void setNewDataRate();
 void sendTelemetryPacket();
 uint8_t calculateRSSI(bool goodPacket);
 void ADC_Processing();
-void StartNextADCConversion();
 
 #endif
 

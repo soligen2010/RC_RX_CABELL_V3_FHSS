@@ -46,9 +46,13 @@ void setup(void) {
 
   pinMode (LED_PIN, OUTPUT);     //status LED
   digitalWrite(LED_PIN, LOW);
+
+  ADC_Processing();   // Initial analog reads for A6/A7.  Initial call returns bad value so call 3 times to get a good starting value from each pin
+  ADC_Processing();
+  ADC_Processing();
  
   setupReciever();
-
+  
   Serial.println(F("Starting main loop ")); 
 }
 
@@ -56,6 +60,8 @@ void setup(void) {
 void loop() {  
   if (getPacket()) 
     outputChannels();
+
+  ADC_Processing();   // Process ADC to asyncronously read A6 and A7 for telemetry analog values.  Non-blocking read
 }
 
 
