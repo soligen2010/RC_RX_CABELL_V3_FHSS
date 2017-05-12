@@ -109,7 +109,7 @@ void outputChannels();
 void attachServoPins();
 void detachServoPins();
 void setNextRadioChannel();
-void checkFailsafeDisarmTimeout(unsigned long lastPacketTime);
+void checkFailsafeDisarmTimeout(unsigned long lastPacketTime,bool inititalGoodPacketRecieved);
 void unbindReciever();
 void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]);
 bool validateChecksum(CABELL_RxTxPacket_t const& packet, uint8_t maxPayloadValueIndex);

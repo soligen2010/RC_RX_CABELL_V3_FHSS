@@ -224,9 +224,7 @@ bool getPacket() {
       } else {
         nextAutomaticChannelSwitch += EXPECTED_PACKET_INTERVAL;
       }
-      if (inititalGoodPacketRecieved) {      // only do failsafe and disarms after good communication has been established for this model
-        checkFailsafeDisarmTimeout(lastPacketTime);   // at each timeout, check for failsafe and disarm.  When disarmed TX must send min throttle to re-arm.
-      }
+      checkFailsafeDisarmTimeout(lastPacketTime,inititalGoodPacketRecieved);   // at each timeout, check for failsafe and disarm.  When disarmed TX must send min throttle to re-arm.
     }
   }  else {
      nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + INITIAL_PACKET_TIMEOUT; 
@@ -242,14 +240,14 @@ bool getPacket() {
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-void checkFailsafeDisarmTimeout(unsigned long lastPacketTime) {
+void checkFailsafeDisarmTimeout(unsigned long lastPacketTime,bool inititalGoodPacketRecieved) {
   unsigned long holdMicros = myMicros();
 
   if ((long)(holdMicros - lastPacketTime)  > ((long)RX_CONNECTION_TIMEOUT)) {  
     outputFailSafeValues(true);
   }
   
-  if ((long)(holdMicros - lastPacketTime) >  ((long)RX_DISARM_TIMEOUT)) { 
+  if (((long)(holdMicros - lastPacketTime) >  ((long)RX_DISARM_TIMEOUT)) || (!inititalGoodPacketRecieved && ((long)(holdMicros - lastPacketTime)  > ((long)RX_CONNECTION_TIMEOUT)))) { 
     if (throttleArmed) {
       Serial.println("Disarming throttle");
       throttleArmed = false;
