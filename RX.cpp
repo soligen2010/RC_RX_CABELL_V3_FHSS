@@ -108,7 +108,7 @@ void setupReciever() {
 
   radio.begin();
   radio.enableDynamicPayloads();
-  radio.setPALevel(RADIO_PA_LEVEL);
+  setTelemetryPowerMode(CABELL_OPTION_MASK_MAX_POWER_OVERRIDE);
   radio.setChannel(0);                    // start out on a channel we dont use so we dont start recieving packets yet.  It will get changed when the looping starts
   setNewDataRate();
   radio.setAutoAck(0);
@@ -425,6 +425,9 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
 
   // Set Telemtry Enabled before setting next channel so telemetry packet is sent when it should be
   telemetryEnabled = (RxPacket.RxMode==CABELL_RxTxPacket_t::RxMode_t::normalWithTelemetry)?true:false;
+  if (telemetryEnabled) {
+    setTelemetryPowerMode(RxPacket.option);
+  }
   setNextRadioChannel();                   // Send telemetry if in telemetry mode.  Doing this as soon as possible to keep timing as tight as possible
   
   uint8_t channelReduction = constrain((RxPacket.option & CABELL_OPTION_MASK_CHANNEL_REDUCTION),0,CABELL_NUM_CHANNELS-CABELL_MIN_CHANNELS);  // Must be at least 4 channels, so cap at 12
@@ -620,6 +623,7 @@ uint8_t calculateRSSI(bool goodPacket) {
   return rssi;
 }
 
+//--------------------------------------------------------------------------------------------------------------------------
 // based on ADC Interrupt example from https://www.gammon.com.au/adc
 void ADC_Processing() {             //Reads ADC value then configures next converion. Alternates between pins A6 and A7
   static byte adcPin = TELEMETRY_ANALOG_INPUT_1;
@@ -637,6 +641,7 @@ void ADC_Processing() {             //Reads ADC value then configures next conve
   }
 }
 
+//--------------------------------------------------------------------------------------------------------------------------
 bool failSafeButtonHeld() {
   // use the bind button becasue bind mode is only checked at startup.  Once RX is started and not in bind mode it is the set failsafe button
   
@@ -656,6 +661,23 @@ bool failSafeButtonHeld() {
   return false;
 }
 
+//--------------------------------------------------------------------------------------------------------------------------
+void setTelemetryPowerMode(uint8_t option) {
+  // Set transmit power tyo max or high based on the option byte in the incomming packet.
+  // This should set the power the same as the transmitter module
+
+  static uint8_t prevPower = RF24_PA_MIN;
+  uint8_t newPower;
+  if ((option & CABELL_OPTION_MASK_MAX_POWER_OVERRIDE) == 0) {
+    newPower = RF24_PA_HIGH;
+  } else {
+    newPower = RF24_PA_MAX;
+  }
+  if (newPower != prevPower) {
+      radio.setPALevel(newPower);
+      prevPower = newPower;
+  }
+}
 
 
 

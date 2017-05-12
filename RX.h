@@ -31,8 +31,6 @@
 
 #define RX_NUM_CHANNELS            8
 
-#define RADIO_PA_LEVEL             RF24_PA_MAX      // RF24_PA_MAX  RF24_PA_HIGH  RF24_PA_LOW  RF24_PA_MIN
-  
 #define CABELL_BIND_RADIO_ADDR  0xA4B7C123F7LL
 
 #define CABELL_NUM_CHANNELS     16                  // The maximum number of RC channels that can be sent in one packet
@@ -45,7 +43,7 @@
 #define CABELL_OPTION_MASK_CHANNEL_REDUCTION     0x0F
 #define CABELL_OPTION_MASK_RECIEVER_OUTPUT_MODE  0x30
 #define CABELL_OPTION_SHIFT_RECIEVER_OUTPUT_MODE 4
-#define CABELL_OPTION_MASK_MAX_POWER_OVERRIDE    0x80
+#define CABELL_OPTION_MASK_MAX_POWER_OVERRIDE    0x40
 
 #define CHANNEL_MIN_VALUE         1000
 #define CHANNEL_MAX_VALUE         2000
@@ -124,6 +122,7 @@ void sendTelemetryPacket();
 uint8_t calculateRSSI(bool goodPacket);
 void ADC_Processing();
 bool failSafeButtonHeld();
+void setTelemetryPowerMode(uint8_t option);
 
 #endif
 
