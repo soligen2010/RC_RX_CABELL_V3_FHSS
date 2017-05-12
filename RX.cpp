@@ -33,6 +33,7 @@
 #include "SUM_PPM.h"
 #include "MyServo.h"    // hacked to remove timer1 ISR - must call this in my own ISR
 #include <ClickEncoder.h>    // use library from github https://github.com/soligen2010/encoder
+#include "myMicros.h"
 
 
 RF24 radio(RADIO_CE_PIN,RADIO_CSN_PIN);
@@ -140,9 +141,10 @@ void setupReciever() {
 
 //--------------------------------------------------------------------------------------------------------------------------
 ISR(PCINT1_vect) {
+  //interrupts();            // Turn interrupts back on to minimize timing affects on Servos or SUM PPM
   if (IS_RADIO_IRQ_on)  {  // pulled low when packet is recieved
     packetReady = true;
-    lastRadioPacketeRecievedTime = micros();   //Use this time to calculate the next expected channel when we miss packets
+    lastRadioPacketeRecievedTime = myMicros();   //Use this time to calculate the next expected channel when we miss packets
     //Serial.println(lastRadioPacketeRecievedTime);
   }
 }
@@ -194,6 +196,8 @@ void setNextRadioChannel() {
   radio.openReadingPipe(1,radioPipeID);
   radio.startListening();
   radio.maskIRQ(true,true,false);         // Turn on RX interrupt
+  myMicros();                             // Ensure myMicros is maintained becasue it doesn't use interrupts
+
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -201,7 +205,7 @@ bool getPacket() {
   static unsigned long lastPacketTime = 0;  
   static bool inititalGoodPacketRecieved = false;
   bool goodPacket_rx = false;
-  static unsigned long nextAutomaticChannelSwitch = micros() + RESYNC_WAIT_MICROS;
+  static unsigned long nextAutomaticChannelSwitch = myMicros() + RESYNC_WAIT_MICROS;
 
 
   // process bind button to see if it was pressed, whicn indicates to save failsafe data
@@ -210,16 +214,15 @@ bool getPacket() {
   
   // Wait for the radio to get a packet, or the timeout for the current radio channel occurs
   if (!packetReady) {
-    if ((long)(micros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet was missed, go to the next channel
+    if ((long)(myMicros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet was missed, go to the next channel
       setNextRadioChannel();               
       //Serial.println("miss");
-      if ((long)(nextAutomaticChannelSwitch - lastRadioPacketeRecievedTime) > RESYNC_TIME_OUT) {  // if a long time passed, increase timeout duration to re-sync with the TX
-        nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
+      if ((long)(nextAutomaticChannelSwitch - lastRadioPacketeRecievedTime) > ((long)RESYNC_TIME_OUT)) {  // if a long time passed, increase timeout duration to re-sync with the TX
         Serial.println("Re-sync Attempt");
+        nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
         setNewDataRate();                       //Alternate data rates until signal found
       } else {
         nextAutomaticChannelSwitch += EXPECTED_PACKET_INTERVAL;
-//        Serial.print("\t\tMiss "); Serial.println(currentChannel);
       }
       if (inititalGoodPacketRecieved) {      // only do failsafe and disarms after good communication has been established for this model
         checkFailsafeDisarmTimeout(lastPacketTime);   // at each timeout, check for failsafe and disarm.  When disarmed TX must send min throttle to re-arm.
@@ -231,23 +234,22 @@ bool getPacket() {
      goodPacket_rx = readAndProcessPacket();
      if (goodPacket_rx) {
        inititalGoodPacketRecieved = true;
-       lastPacketTime = millis();
-       //Serial.println(lastPacketTime);
+       lastPacketTime = myMicros();
        failSafeDisplayFlag = true;
-    }
+     }
   }
   return goodPacket_rx;
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 void checkFailsafeDisarmTimeout(unsigned long lastPacketTime) {
-  unsigned long holdMillis = millis();
-  
-  if ((long)(holdMillis - lastPacketTime)  >  RX_CONNECTION_TIMEOUT) {  
+  unsigned long holdMicros = myMicros();
+
+  if ((long)(holdMicros - lastPacketTime)  > ((long)RX_CONNECTION_TIMEOUT)) {  
     outputFailSafeValues(true);
   }
-
-  if ((long)(holdMillis - lastPacketTime) >  RX_DISARM_TIMEOUT) { 
+  
+  if ((long)(holdMicros - lastPacketTime) >  ((long)RX_DISARM_TIMEOUT)) { 
     if (throttleArmed) {
       Serial.println("Disarming throttle");
       throttleArmed = false;
@@ -295,7 +297,6 @@ void outputSumPPM() {  // output as AETR
     setPPMOutputChannelValue(x, channelValues[adjusted_x]);
   //  Serial.print(channelValues[x]); Serial.print("\t"); 
   } 
-  //Serial.println(millis()); 
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -309,7 +310,7 @@ void outputFailSafeValues(bool callOutputChannels) {
     //Serial.println(channelValues[x]);
   }
   
-  if (failSafeDisplayFlag && millis() > 1000) {  //startup failsave lasts for first second, so don't display until after that
+  if (failSafeDisplayFlag) {  
     Serial.println(F("Failsafe"));
     failSafeDisplayFlag = false;
   }
@@ -341,7 +342,7 @@ void unbindReciever() {
   while (true) {                                           // Flash LED forever indicating unbound
     digitalWrite(LED_PIN, ledState);
     ledState =  !ledState;
-    delay(250);                                            // Fast LED flash
+    myDelay(250);                                            // Fast LED flash
   }  
 }
 
@@ -368,7 +369,7 @@ void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]) {
     while (true) {                                           // Flash LED forever indicating bound
       digitalWrite(LED_PIN, ledState);
       ledState =  !ledState;
-      delay(2000);                                            // Slow flash
+      myDelay(2000);                                            // Slow flash
     }
   }  
 }
@@ -396,16 +397,12 @@ void loadFailSafeDefaultValues() {
 
 //--------------------------------------------------------------------------------------------------------------------------
 void setFailSafeValues(uint16_t newFailsafeValues[]) {
-  static unsigned long lastFailSafeSave = 0;
-  if ((long)(millis() - lastFailSafeSave) > 200) {          // only save failsafe every 200 ms so that EEPROM is not written too often       
     for (int x = 0; x < CABELL_NUM_CHANNELS; x++) {
       failSafeChannelValues[x] = newFailsafeValues[x];
     }
     failSafeChannelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;           // Throttle should always be the min value when failsafe}
     EEPROM.put(failSafeChannelValuesEEPROMAddress,failSafeChannelValues);  
     Serial.println("Fail Safe Values Set");
-    lastFailSafeSave = millis();
-  }
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -565,7 +562,6 @@ bool decodeChannelValues(CABELL_RxTxPacket_t const& RxPacket, uint8_t channelsRe
 //  for ( int b = 0 ; b < CABELL_NUM_CHANNELS ; b ++ ) { 
 //    Serial.print(tempHoldValues[b]);Serial.print("\t");
 //  }
-//  Serial.println(millis());
   
   return packet_rx;
 }
@@ -619,15 +615,15 @@ uint8_t calculateRSSI(bool goodPacket) {
   // This can additionally be called at any time with false to just return the current RSSI and it wont affect calculation (but may trigger the interval end logic) 
 
   static uint8_t rssi = TELEMETRY_RSSI_MAX_VALUE;                                           // Initialize to perfect RSSI until it can be calcualted
-  static unsigned long nextRssiCalcTime = micros() + TELEMETRY_RSSI_CALC_INTERVAL;
+  static unsigned long nextRssiCalcTime = myMicros() + TELEMETRY_RSSI_CALC_INTERVAL;
   static uint16_t rssiCounter = 0;
 
   if (goodPacket)
     rssiCounter++;
   
-  if ((long)(micros() - nextRssiCalcTime) >= 0 ) {      // Interval end
+  if ((long)(myMicros() - nextRssiCalcTime) >= 0 ) {      // Interval end
     // RSSI is the based on hte expected packet rate for the interval vs. actiual packets.  255 is 100% of the expected rate.
-    nextRssiCalcTime = micros() + TELEMETRY_RSSI_CALC_INTERVAL;
+    nextRssiCalcTime = myMicros() + TELEMETRY_RSSI_CALC_INTERVAL;
     // calculate rssi as a ratio of expected to actual packets as a percent then map to actual range
     uint16_t rssiCalc = (uint16_t) (((float)rssiCounter / (float)((uint16_t)((float)TELEMETRY_RSSI_CALC_INTERVAL/(float)EXPECTED_PACKET_INTERVAL)) * (float) (TELEMETRY_RSSI_MAX_VALUE - TELEMETRY_RSSI_MIN_VALUE)) + float(TELEMETRY_RSSI_MIN_VALUE));
     rssi = constrain(rssiCalc,TELEMETRY_RSSI_MIN_VALUE,TELEMETRY_RSSI_MAX_VALUE);

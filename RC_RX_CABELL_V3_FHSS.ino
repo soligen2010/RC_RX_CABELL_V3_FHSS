@@ -36,9 +36,14 @@
    
 #include "RX.h"
 #include "Pins.h"
+#include "myMicros.h"
+
 
 //--------------------------------------------------------------------------------------------------------------------------
 void setup(void) {
+  initMyMicros();                 //Initialized timer 2 for replacement of micros() and delay() functions with myMicros() and myDelay()
+  TIMSK0 = 0;                     //disable timer 0 interrupts to mitigate affect on servo and SUM PPM timing interupts.  Use above instead.
+         
   Serial.begin(74880);
   Serial.println(); Serial.println(F("Initializing"));
   
@@ -58,9 +63,10 @@ void setup(void) {
 
 //--------------------------------------------------------------------------------------------------------------------------
 void loop() {  
-  if (getPacket()) 
+  myMicros();         // Ensure myMicros is maintained becasue it doesn't use interrupts
+  if (getPacket()) {
     outputChannels();
-
+  }
   ADC_Processing();   // Process ADC to asyncronously read A6 and A7 for telemetry analog values.  Non-blocking read
 }
 

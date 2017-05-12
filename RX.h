@@ -57,8 +57,8 @@
 #define THROTTLE_CHANNEL          3
 #define AUX1_CHANNEL              4  // only AUX1 needs to be specified here.  All subsequence AUX channels follow in sequence
 
-#define RX_CONNECTION_TIMEOUT     1000     // If no packet recieved in this time frame apply failsafe settings
-#define RX_DISARM_TIMEOUT         3000     // If no packet recieved in this time frame disarm the throttle
+#define RX_CONNECTION_TIMEOUT     1000000     // If no packet recieved in this time frame apply failsafe settings. In microseconds
+#define RX_DISARM_TIMEOUT         3000000     // If no packet recieved in this time frame disarm the throttle. In microseconds
 
 // FHSS parameters
 #define EXPECTED_PACKET_INTERVAL        ((uint32_t)3000)
