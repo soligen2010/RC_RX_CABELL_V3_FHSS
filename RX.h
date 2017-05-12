@@ -123,6 +123,7 @@ void setNewDataRate();
 void sendTelemetryPacket();
 uint8_t calculateRSSI(bool goodPacket);
 void ADC_Processing();
+bool failSafeButtonHeld();
 
 #endif
 

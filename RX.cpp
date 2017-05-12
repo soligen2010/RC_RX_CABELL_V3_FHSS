@@ -32,7 +32,6 @@
 #include "Rx_Tx_Util.h"
 #include "SUM_PPM.h"
 #include "MyServo.h"    // hacked to remove timer1 ISR - must call this in my own ISR
-#include <ClickEncoder.h>    // use library from github https://github.com/soligen2010/encoder
 #include "myMicros.h"
 
 
@@ -66,8 +65,6 @@ bool telemetryEnabled = false;
 int16_t analogValue[2] = {0,0};
 
 MyServo channelServo[RX_NUM_CHANNELS];
-
-ClickEncoder* setFailSafeButton;
 
 //--------------------------------------------------------------------------------------------------------------------------
 void attachServoPins() {
@@ -107,10 +104,6 @@ void setupReciever() {
     radioPipeID = radioNormalRxPipeID;    
   }
 
-  setFailSafeButton = new ClickEncoder(BIND_BUTTON_PIN,false);   // use bind pin to check for click to set failsafe values
-  setFailSafeButton->setButtonHeldEnabled(true);
-  setFailSafeButton->setDoubleClickEnabled(false);
- 
   getChannelSequence (radioChannel, CABELL_RADIO_CHANNELS, radioPipeID);
 
   radio.begin();
@@ -206,11 +199,6 @@ bool getPacket() {
   static bool inititalGoodPacketRecieved = false;
   bool goodPacket_rx = false;
   static unsigned long nextAutomaticChannelSwitch = myMicros() + RESYNC_WAIT_MICROS;
-
-
-  // process bind button to see if it was pressed, whicn indicates to save failsafe data
-  // normally this type of maintenance routine is done in a timer interrupt, but doing it in the loop so it doesn't interfere with the pin change timer.
-  setFailSafeButton->service();
   
   // Wait for the radio to get a packet, or the timeout for the current radio channel occurs
   if (!packetReady) {
@@ -247,7 +235,7 @@ void checkFailsafeDisarmTimeout(unsigned long lastPacketTime,bool inititalGoodPa
     outputFailSafeValues(true);
   }
   
-  if (((long)(holdMicros - lastPacketTime) >  ((long)RX_DISARM_TIMEOUT)) || (!inititalGoodPacketRecieved && ((long)(holdMicros - lastPacketTime)  > ((long)RX_CONNECTION_TIMEOUT)))) { 
+  if (((long)(holdMicros - lastPacketTime) >  ((long)RX_DISARM_TIMEOUT)) || (!inititalGoodPacketRecieved && ((long)(holdMicros - lastPacketTime)  > ((long)RX_CONNECTION_TIMEOUT)) ) ) { 
     if (throttleArmed) {
       Serial.println("Disarming throttle");
       throttleArmed = false;
@@ -474,7 +462,7 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
   static bool failSafeValuesHaveBeenSet = false;
 
   // fail safe settings can come in on a failsafe packet, but also use a normal packed if bind mode button is pressed after start up
-  if (!bindMode && (setFailSafeButton->getButton() == ClickEncoder::Held)) { 
+  if (failSafeButtonHeld()) { 
     if (RxMode == CABELL_RxTxPacket_t::RxMode_t::normal || RxMode == CABELL_RxTxPacket_t::RxMode_t::normalWithTelemetry) {
       RxMode = CABELL_RxTxPacket_t::RxMode_t::setFailSafe;
     }
@@ -647,6 +635,25 @@ void ADC_Processing() {             //Reads ADC value then configures next conve
   
     ADCSRA |= bit (ADSC);   //Start next conversion 
   }
+}
+
+bool failSafeButtonHeld() {
+  // use the bind button becasue bind mode is only checked at startup.  Once RX is started and not in bind mode it is the set failsafe button
+  
+  static unsigned long heldTriggerTime = 0;
+  
+  if(!bindMode && !digitalRead(BIND_BUTTON_PIN)) {  // invert becasue pin is pulled up so low means pressed
+    if (heldTriggerTime == 0) {
+      heldTriggerTime = myMicros() + 1000000ul;   // Held state achieved after button is pressed for 1 second
+    }
+    if ((long)(myMicros() - heldTriggerTime) >= 0) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  heldTriggerTime = 0;
+  return false;
 }
 
 

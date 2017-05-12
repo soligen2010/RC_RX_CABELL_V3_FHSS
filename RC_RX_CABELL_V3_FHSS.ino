@@ -29,8 +29,6 @@
    *  Aaduino Core, SPI, and EEPROM
    *  http://tmrh20.github.io/RF24 for the NRF24L01 (Use trhe soligen2010 fork if any changes to this library casues issues)
    *  
-   *  encoder from https://github.com/soligen2010/encoder
-   *  
    *  Arduino Servo was modified and is included with this source.  It was changed to not directly define the Timer 1 ISR
    */
    
