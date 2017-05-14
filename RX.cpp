@@ -25,17 +25,15 @@
  */
  
 #include <SPI.h>
-#include <RF24.h>
+#include "RF24.h" 
 #include "RX.h"
 #include "Pins.h"
 #include <EEPROM.h>
 #include "Rx_Tx_Util.h"
 #include "SUM_PPM.h"
 #include "MyServo.h"    // hacked to remove timer1 ISR - must call this in my own ISR
-#include "myMicros.h"
 
-
-RF24 radio(RADIO_CE_PIN,RADIO_CSN_PIN);
+RF24 radio(RADIO_CE_PIN,RADIO_CSN_PIN);  
   
 uint16_t channelValues [CABELL_NUM_CHANNELS];
 uint8_t  currentModel = 0;
@@ -106,22 +104,26 @@ void setupReciever() {
 
   getChannelSequence (radioChannel, CABELL_RADIO_CHANNELS, radioPipeID);
 
+  RADIO_IRQ_SET_INPUT;
+  RADIO_IRQ_SET_PULLUP;
+
   radio.begin();
+  radio.maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
   radio.enableDynamicPayloads();
   setTelemetryPowerMode(CABELL_OPTION_MASK_MAX_POWER_OVERRIDE);
   radio.setChannel(0);                    // start out on a channel we dont use so we dont start recieving packets yet.  It will get changed when the looping starts
   setNewDataRate();
   radio.setAutoAck(0);
 
-  radio.maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
-  RADIO_IRQ_SET_INPUT;
-  RADIO_IRQ_SET_PULLUP;
-  
   //setup pin change interrupt
   cli();    // switch interrupts off while messing with their settings  
   PCICR =0x02;          // Enable PCINT1 interrupt
   PCMSK1 = RADIO_IRQ_PIN_MASK;
   sei();
+
+  delay(5);
+  radio.flush_rx();
+  packetReady = false;
   
   radio.openReadingPipe(1,radioPipeID);
   radio.startListening();
@@ -134,11 +136,10 @@ void setupReciever() {
 
 //--------------------------------------------------------------------------------------------------------------------------
 ISR(PCINT1_vect) {
-  //interrupts();            // Turn interrupts back on to minimize timing affects on Servos or SUM PPM
+  interrupts();            // Turn interrupts back on to minimize timing affects on Servos or SUM PPM
   if (IS_RADIO_IRQ_on)  {  // pulled low when packet is recieved
     packetReady = true;
-    lastRadioPacketeRecievedTime = myMicros();   //Use this time to calculate the next expected channel when we miss packets
-    //Serial.println(lastRadioPacketeRecievedTime);
+    lastRadioPacketeRecievedTime = micros();   //Use this time to calculate the next expected channel when we miss packets
   }
 }
 
@@ -181,6 +182,7 @@ void setNextRadioChannel() {
   radio.maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
   radio.stopListening();
   radio.closeReadingPipe(1);
+  radio.flush_rx();
   if (telemetryEnabled) {
     sendTelemetryPacket();
   }
@@ -189,7 +191,6 @@ void setNextRadioChannel() {
   radio.openReadingPipe(1,radioPipeID);
   radio.startListening();
   radio.maskIRQ(true,true,false);         // Turn on RX interrupt
-  myMicros();                             // Ensure myMicros is maintained becasue it doesn't use interrupts
 
 }
 
@@ -198,13 +199,13 @@ bool getPacket() {
   static unsigned long lastPacketTime = 0;  
   static bool inititalGoodPacketRecieved = false;
   bool goodPacket_rx = false;
-  static unsigned long nextAutomaticChannelSwitch = myMicros() + RESYNC_WAIT_MICROS;
+  static unsigned long nextAutomaticChannelSwitch = micros() + RESYNC_WAIT_MICROS;
   
   // Wait for the radio to get a packet, or the timeout for the current radio channel occurs
   if (!packetReady) {
-    if ((long)(myMicros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet was missed, go to the next channel
+    if ((long)(micros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet was missed, go to the next channel
       setNextRadioChannel();               
-      //Serial.println("miss");
+      //if (inititalGoodPacketRecieved) Serial.println("miss");
       if ((long)(nextAutomaticChannelSwitch - lastRadioPacketeRecievedTime) > ((long)RESYNC_TIME_OUT)) {  // if a long time passed, increase timeout duration to re-sync with the TX
         Serial.println("Re-sync Attempt");
         nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
@@ -215,12 +216,13 @@ bool getPacket() {
       checkFailsafeDisarmTimeout(lastPacketTime,inititalGoodPacketRecieved);   // at each timeout, check for failsafe and disarm.  When disarmed TX must send min throttle to re-arm.
     }
   }  else {
+     //if (inititalGoodPacketRecieved) Serial.println("hit");
      nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + INITIAL_PACKET_TIMEOUT; 
      packetReady = false;
      goodPacket_rx = readAndProcessPacket();
      if (goodPacket_rx) {
        inititalGoodPacketRecieved = true;
-       lastPacketTime = myMicros();
+       lastPacketTime = micros();
        failSafeDisplayFlag = true;
      }
   }
@@ -229,13 +231,13 @@ bool getPacket() {
 
 //--------------------------------------------------------------------------------------------------------------------------
 void checkFailsafeDisarmTimeout(unsigned long lastPacketTime,bool inititalGoodPacketRecieved) {
-  unsigned long holdMicros = myMicros();
+  unsigned long holdMicros = micros();
 
   if ((long)(holdMicros - lastPacketTime)  > ((long)RX_CONNECTION_TIMEOUT)) {  
     outputFailSafeValues(true);
   }
   
-  if (((long)(holdMicros - lastPacketTime) >  ((long)RX_DISARM_TIMEOUT)) || (!inititalGoodPacketRecieved && ((long)(holdMicros - lastPacketTime)  > ((long)RX_CONNECTION_TIMEOUT)) ) ) { 
+  if (((long)(holdMicros - lastPacketTime) >  ((long)RX_DISARM_TIMEOUT)) || (!inititalGoodPacketRecieved && ((long)(holdMicros - lastPacketTime)  > ((long)RX_DISARM_TIMEOUT)) ) ) { 
     if (throttleArmed) {
       Serial.println("Disarming throttle");
       throttleArmed = false;
@@ -328,7 +330,7 @@ void unbindReciever() {
   while (true) {                                           // Flash LED forever indicating unbound
     digitalWrite(LED_PIN, ledState);
     ledState =  !ledState;
-    myDelay(250);                                            // Fast LED flash
+    delay(250);                                            // Fast LED flash
   }  
 }
 
@@ -355,7 +357,7 @@ void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]) {
     while (true) {                                           // Flash LED forever indicating bound
       digitalWrite(LED_PIN, ledState);
       ledState =  !ledState;
-      myDelay(2000);                                            // Slow flash
+      delay(2000);                                            // Slow flash
     }
   }  
 }
@@ -604,15 +606,15 @@ uint8_t calculateRSSI(bool goodPacket) {
   // This can additionally be called at any time with false to just return the current RSSI and it wont affect calculation (but may trigger the interval end logic) 
 
   static uint8_t rssi = TELEMETRY_RSSI_MAX_VALUE;                                           // Initialize to perfect RSSI until it can be calcualted
-  static unsigned long nextRssiCalcTime = myMicros() + TELEMETRY_RSSI_CALC_INTERVAL;
+  static unsigned long nextRssiCalcTime = micros() + TELEMETRY_RSSI_CALC_INTERVAL;
   static uint16_t rssiCounter = 0;
 
   if (goodPacket)
     rssiCounter++;
   
-  if ((long)(myMicros() - nextRssiCalcTime) >= 0 ) {      // Interval end
+  if ((long)(micros() - nextRssiCalcTime) >= 0 ) {      // Interval end
     // RSSI is the based on hte expected packet rate for the interval vs. actiual packets.  255 is 100% of the expected rate.
-    nextRssiCalcTime = myMicros() + TELEMETRY_RSSI_CALC_INTERVAL;
+    nextRssiCalcTime = micros() + TELEMETRY_RSSI_CALC_INTERVAL;
     // calculate rssi as a ratio of expected to actual packets as a percent then map to actual range
     uint16_t rssiCalc = (uint16_t) (((float)rssiCounter / (float)((uint16_t)((float)TELEMETRY_RSSI_CALC_INTERVAL/(float)EXPECTED_PACKET_INTERVAL)) * (float) (TELEMETRY_RSSI_MAX_VALUE - TELEMETRY_RSSI_MIN_VALUE)) + float(TELEMETRY_RSSI_MIN_VALUE));
     rssi = constrain(rssiCalc,TELEMETRY_RSSI_MIN_VALUE,TELEMETRY_RSSI_MAX_VALUE);
@@ -649,9 +651,9 @@ bool failSafeButtonHeld() {
   
   if(!bindMode && !digitalRead(BIND_BUTTON_PIN)) {  // invert becasue pin is pulled up so low means pressed
     if (heldTriggerTime == 0) {
-      heldTriggerTime = myMicros() + 1000000ul;   // Held state achieved after button is pressed for 1 second
+      heldTriggerTime = micros() + 1000000ul;   // Held state achieved after button is pressed for 1 second
     }
-    if ((long)(myMicros() - heldTriggerTime) >= 0) {
+    if ((long)(micros() - heldTriggerTime) >= 0) {
       return true;
     } else {
       return false;
