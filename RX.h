@@ -27,7 +27,7 @@
 #ifndef __have__RC_RX_TX_RX_h__
 #define __have__RC_RX_TX_RX_h__
 
-#include <RF24.h>
+#include "RF24.h"
 
 #define RX_NUM_CHANNELS            8
 

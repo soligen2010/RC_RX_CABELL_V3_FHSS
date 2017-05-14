@@ -27,21 +27,16 @@
   /* Library dependencies:
    *  
    *  Aaduino Core, SPI, and EEPROM
-   *  http://tmrh20.github.io/RF24 for the NRF24L01 (Use trhe soligen2010 fork if any changes to this library casues issues)
+   *  http://tmrh20.github.io/RF24 USe the soligen2010 fork is the main verions causes any issues.
    *  
    *  Arduino Servo was modified and is included with this source.  It was changed to not directly define the Timer 1 ISR
    */
    
 #include "RX.h"
 #include "Pins.h"
-#include "myMicros.h"
-
 
 //--------------------------------------------------------------------------------------------------------------------------
 void setup(void) {
-  initMyMicros();                 //Initialized timer 2 for replacement of micros() and delay() functions with myMicros() and myDelay()
-  TIMSK0 = 0;                     //disable timer 0 interrupts to mitigate affect on servo and SUM PPM timing interupts.  Use above instead.
-         
   Serial.begin(74880);
   Serial.println(); Serial.println(F("Initializing"));
   
@@ -61,7 +56,6 @@ void setup(void) {
 
 //--------------------------------------------------------------------------------------------------------------------------
 void loop() {  
-  myMicros();         // Ensure myMicros is maintained becasue it doesn't use interrupts
   if (getPacket()) {
     outputChannels();
   }

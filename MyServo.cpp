@@ -1,5 +1,5 @@
 //
-// Copied from Arduino Servi library and changed to not use the interrupt 1 vector
+// Copied from Arduino Servo library and changed to not use the interrupt 1 vector
 // Instead in Interupt 1 routine call interruptOneProcessing()
 //
 
