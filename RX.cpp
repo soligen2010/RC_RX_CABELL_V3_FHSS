@@ -509,8 +509,8 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
 
 //--------------------------------------------------------------------------------------------------------------------------
 bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[]) {
-  bool packet_rx = true;
   static bool failSafeValuesHaveBeenSet = false;
+  bool packet_rx = true;
 
   // fail safe settings can come in on a failsafe packet, but also use a normal packed if bind mode button is pressed after start up
   if (failSafeButtonHeld()) { 
