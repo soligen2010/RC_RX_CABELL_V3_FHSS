@@ -33,7 +33,11 @@
 #include "SUM_PPM.h"
 #include "MyServo.h"    // hacked to remove timer1 ISR - must call this in my own ISR
 
-RF24 radio(RADIO_CE_PIN,RADIO_CSN_PIN);  
+RF24 radio1(RADIO1_CSN_PIN,RADIO1_CSN_PIN);  
+RF24 radio2(RADIO2_CSN_PIN,RADIO2_CSN_PIN);  
+
+RF24* primaryReciever = NULL;
+RF24* secondaryReciever = NULL;
   
 uint16_t channelValues [CABELL_NUM_CHANNELS];
 uint8_t  currentModel = 0;
@@ -57,7 +61,6 @@ volatile uint8_t currentOutputMode = 255;    // initialize to an unused mode
 volatile uint8_t nextOutputMode = 255;       // initialize to an unused mode
 
 volatile bool packetReady = false;
-volatile unsigned long lastRadioPacketeRecievedTime = 0;
 
 bool telemetryEnabled = false;
 int16_t analogValue[2] = {0,0};
@@ -104,42 +107,63 @@ void setupReciever() {
 
   getChannelSequence (radioChannel, CABELL_RADIO_CHANNELS, radioPipeID);
 
+  //Need to set all CSN pins high before BEGIN so that only one device listens on SPI during the first initialization
+  pinMode(RADIO1_CSN_PIN,OUTPUT);    
+  pinMode(RADIO2_CSN_PIN,OUTPUT);   
+  digitalWrite(RADIO1_CSN_PIN,HIGH);
+  digitalWrite(RADIO2_CSN_PIN,HIGH);
+  
+  radio1.begin();
+  radio2.begin();
+
+  // Set primary and secondary recievers.
+  // If only one is present, then both primary and secondary reciever pointers end up pointing to the same radio.
+  // This way the reciecer swap logic doesn't care if one or two recieves are actually connected
+  if (radio2.isChipConnected()) {
+    Serial.println("Backup radio detected");
+    secondaryReciever = &radio2;
+  } else {
+    Serial.println("Backup radio not detected");
+    secondaryReciever = &radio1;
+    digitalWrite(RADIO2_CSN_PIN,HIGH);   // If the backup radio is not present, set this pin high becasue some older 1 radio configurations used this as CE on the primary radio
+  }  
+  if (radio1.isChipConnected()) {
+    primaryReciever = &radio1;
+    Serial.println("Primary radio detected");
+  } else {
+    primaryReciever = &radio2;
+    Serial.println("Primary radio not detected");
+  }
+
   RADIO_IRQ_SET_INPUT;
   RADIO_IRQ_SET_PULLUP;
 
-  radio.begin();
-  radio.maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
-  radio.enableDynamicPayloads();
-  setTelemetryPowerMode(CABELL_OPTION_MASK_MAX_POWER_OVERRIDE);
-  radio.setChannel(0);                    // start out on a channel we dont use so we dont start recieving packets yet.  It will get changed when the looping starts
+  initializeRadio(primaryReciever);
+  initializeRadio(secondaryReciever);
+
   setNewDataRate();
-  radio.setAutoAck(0);
-
-  //setup pin change interrupt
-  cli();    // switch interrupts off while messing with their settings  
-  PCICR =0x02;          // Enable PCINT1 interrupt
-  PCMSK1 = RADIO_IRQ_PIN_MASK;
-  sei();
-
-  delay(5);
-  radio.flush_rx();
-  packetReady = false;
+  setTelemetryPowerMode(CABELL_OPTION_MASK_MAX_POWER_OVERRIDE);
   
-  radio.openReadingPipe(1,radioPipeID);
-  radio.startListening();
+  flushReciever();
+  packetReady = false;
 
   outputFailSafeValues(false);   // initialize default values for output channels
   
   Serial.print("Radio ID: ");Serial.print((uint32_t)(radioPipeID>>32)); Serial.print("    ");Serial.println((uint32_t)((radioPipeID<<32)>>32));
   Serial.print("Current Model Number: ");Serial.println(currentModel);
+  
+ //setup pin change interrupt
+  cli();    // switch interrupts off while messing with their settings  
+  PCICR =0x02;          // Enable PCINT1 interrupt
+  PCMSK1 = RADIO_IRQ_PIN_MASK;
+  sei();
+
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 ISR(PCINT1_vect) {
-  interrupts();            // Turn interrupts back on to minimize timing affects on Servos or SUM PPM
   if (IS_RADIO_IRQ_on)  {  // pulled low when packet is recieved
     packetReady = true;
-    lastRadioPacketeRecievedTime = micros();   //Use this time to calculate the next expected channel when we miss packets
   }
 }
 
@@ -176,21 +200,32 @@ void outputChannels() {
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-void setNextRadioChannel() {
+void setNextRadioChannel(bool missedPacket) {
   static int currentChannel = CABELL_RADIO_MIN_CHANNEL_NUM;  // Initializes the channel sequence.
-  
-  radio.maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
-  radio.stopListening();
-  radio.closeReadingPipe(1);
-  radio.flush_rx();
+
+  //only swap recievers if the secondary reciever got the last packet 
+  //so we dont swap to a reciever that is not currently revieving
+  //unless packet was missed by both radios, in which case swap every time.
+  bool performSwap = secondaryReciever->available() || missedPacket;
+
+  primaryReciever->maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
+  secondaryReciever->maskIRQ(true,true,true);       // Need to turn off secondary too in case we swapped to secondary to get a missed packet
+  primaryReciever->stopListening();
+  secondaryReciever->stopListening();
+  flushReciever();
+  delayMicroseconds(130);   // Since txDelay was set to 0, need this delay before transmitting so that the change to TX settles
   if (telemetryEnabled) {
     sendTelemetryPacket();
   }
+  if (performSwap) {
+    swapRecievers();
+   }
   currentChannel = getNextChannel (radioChannel, CABELL_RADIO_CHANNELS, currentChannel);
-  radio.setChannel(currentChannel);
-  radio.openReadingPipe(1,radioPipeID);
-  radio.startListening();
-  radio.maskIRQ(true,true,false);         // Turn on RX interrupt
+  primaryReciever->setChannel(currentChannel);
+  secondaryReciever->setChannel(currentChannel);
+  primaryReciever->startListening();
+  secondaryReciever->startListening();
+  primaryReciever->maskIRQ(true,true,false);         // Turn on RX interrupt
 
 }
 
@@ -198,24 +233,34 @@ void setNextRadioChannel() {
 bool getPacket() {  
   static unsigned long lastPacketTime = 0;  
   static bool inititalGoodPacketRecieved = false;
-  bool goodPacket_rx = false;
   static unsigned long nextAutomaticChannelSwitch = micros() + RESYNC_WAIT_MICROS;
+  static unsigned long lastRadioPacketeRecievedTime = 0;
+  bool goodPacket_rx = false;
   
   // Wait for the radio to get a packet, or the timeout for the current radio channel occurs
   if (!packetReady) {
     if ((long)(micros() - nextAutomaticChannelSwitch) >= 0 ) {      // if timed out the packet was missed, go to the next channel
-      setNextRadioChannel();               
-      //if (inititalGoodPacketRecieved) Serial.println("miss");
-      if ((long)(nextAutomaticChannelSwitch - lastRadioPacketeRecievedTime) > ((long)RESYNC_TIME_OUT)) {  // if a long time passed, increase timeout duration to re-sync with the TX
-        Serial.println("Re-sync Attempt");
-        nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
-        setNewDataRate();                       //Alternate data rates until signal found
+      if (secondaryReciever->available()) {
+        // missed packet but secondary radio has it so swap radios and signal packet ready
+        //packet will be picked up on next loop through
+        packetReady = true;
+        swapRecievers();
+        //Serial.println("SR");
       } else {
-        nextAutomaticChannelSwitch += EXPECTED_PACKET_INTERVAL;
+        //if (inititalGoodPacketRecieved) Serial.println("miss");
+        setNextRadioChannel(true);       //true indicated that packet was missed         
+        if ((long)(nextAutomaticChannelSwitch - lastRadioPacketeRecievedTime) > ((long)RESYNC_TIME_OUT)) {  // if a long time passed, increase timeout duration to re-sync with the TX
+          Serial.println("Re-sync Attempt");
+          nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
+          setNewDataRate();                       //Alternate data rates until signal found
+        } else {
+          nextAutomaticChannelSwitch += EXPECTED_PACKET_INTERVAL;
+        }
+        checkFailsafeDisarmTimeout(lastPacketTime,inititalGoodPacketRecieved);   // at each timeout, check for failsafe and disarm.  When disarmed TX must send min throttle to re-arm.
       }
-      checkFailsafeDisarmTimeout(lastPacketTime,inititalGoodPacketRecieved);   // at each timeout, check for failsafe and disarm.  When disarmed TX must send min throttle to re-arm.
     }
   }  else {
+     lastRadioPacketeRecievedTime = micros();   //Use this time to calculate the next expected packet so when we miss packets we can change channels
      //if (inititalGoodPacketRecieved) Serial.println("hit");
      nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + INITIAL_PACKET_TIMEOUT; 
      packetReady = false;
@@ -418,7 +463,7 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   CABELL_RxTxPacket_t RxPacket;
   uint16_t tempHoldValues [CABELL_NUM_CHANNELS]; 
   
-  radio.read( &RxPacket,  sizeof(RxPacket) );
+  primaryReciever->read( &RxPacket,  sizeof(RxPacket) );
 
   // Remove 8th bit from RxMode because this is a toggle bit that is not included in the checksum
   // This toggle with each xmit so consecrutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
@@ -430,7 +475,8 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   if (telemetryEnabled) {
     setTelemetryPowerMode(RxPacket.option);
   }
-  setNextRadioChannel();                   // Send telemetry if in telemetry mode.  Doing this as soon as possible to keep timing as tight as possible
+  setNextRadioChannel(false);                   // Also sends telemetry if in telemetry mode.  Doing this as soon as possible to keep timing as tight as possible
+                                                // False indicates that packet was not missed
   
   uint8_t channelReduction = constrain((RxPacket.option & CABELL_OPTION_MASK_CHANNEL_REDUCTION),0,CABELL_NUM_CHANNELS-CABELL_MIN_CHANNELS);  // Must be at least 4 channels, so cap at 12
   uint8_t packetSize = sizeof(RxPacket) - ((((channelReduction - (channelReduction%2))/ 2)) * 3);      // reduce 3 bytes per 2 channels, but not last channel if it is odd
@@ -564,19 +610,23 @@ void setNewDataRate() {
   fastDataRate = !fastDataRate;
 
   if (fastDataRate) {
-    radio.setDataRate(RF24_1MBPS);
+    primaryReciever->setDataRate(RF24_1MBPS);
+    secondaryReciever->setDataRate(RF24_1MBPS);
   } else {
-    radio.setDataRate(RF24_250KBPS );
-  }  
+    primaryReciever->setDataRate(RF24_250KBPS );
+    secondaryReciever->setDataRate(RF24_250KBPS );
+  }
+  //setDataRate changes txDelay so reset it here  
+  primaryReciever->txDelay = 0;         //Can be reduced to 0 becasue no need to wait twice if there are 2 radios.  Will need to ensure there is a delay of 130us before telemetry tx
+
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 void sendTelemetryPacket() {
-  radio.openWritingPipe(radioPipeID);
 
+  static int8_t packetCounter = 0;  // this is only used for toggleing bit
   uint8_t sendPacket[4] = {CABELL_RxTxPacket_t::RxMode_t::telemetryResponse};
  
-  static int8_t packetCounter = 0;  // this is only used for toggleing bit
   packetCounter++;
   sendPacket[0] &= 0x7F;                 // clear 8th bit
   sendPacket[0] |= packetCounter<<7;     // This causes the 8th bit of the first byte to toggle with each xmit so consecutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
@@ -589,7 +639,7 @@ void sendTelemetryPacket() {
   //Serial.println(analogValue[1]);
 
   uint8_t packetSize =  sizeof(sendPacket);
-  radio.startFastWrite( &sendPacket[0], packetSize, 0); 
+  primaryReciever->startFastWrite( &sendPacket[0], packetSize, 0); 
 
       // calculate transmit time based on packet size and data rate of 1MB per sec
       // This is done becasue polling the status register during xmit to see when xmit is done casued issues sometimes.
@@ -676,9 +726,37 @@ void setTelemetryPowerMode(uint8_t option) {
     newPower = RF24_PA_MAX;
   }
   if (newPower != prevPower) {
-      radio.setPALevel(newPower);
+      primaryReciever->setPALevel(newPower);
+      secondaryReciever->setPALevel(newPower);
       prevPower = newPower;
   }
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
+void initializeRadio(RF24* radioPointer) {
+  radioPointer->maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
+  radioPointer->enableDynamicPayloads();
+  radioPointer->setChannel(0);                    // start out on a channel we dont use so we dont start recieving packets yet.  It will get changed when the looping starts
+  radioPointer->setAutoAck(0);
+  radioPointer->openWritingPipe(radioPipeID);
+  radioPointer->openReadingPipe(1,radioPipeID);
+  radioPointer->startListening();
+  radioPointer->csDelay = 0;         //Can be reduced to 0 beacase we use interrupts and timing instead of polling through SPI
+
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
+void flushReciever() {
+  primaryReciever->flush_rx();
+  secondaryReciever->flush_rx();
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
+void swapRecievers() {
+  RF24* hold = NULL;
+  hold = primaryReciever;
+  primaryReciever = secondaryReciever;
+  secondaryReciever = hold;
 }
 
 

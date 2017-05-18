@@ -29,8 +29,8 @@
 
 #include "RX.h"
 
-#define RADIO_CE_PIN              10
-#define RADIO_CSN_PIN             14     // AKA A0
+#define RADIO1_CSN_PIN             14     // AKA A0
+#define RADIO2_CSN_PIN            10     // Second radio for diversity.  Some older hardware used this pin as CE
 
 #define SPI_MOSI                  11
 #define SPI_MISO                  12

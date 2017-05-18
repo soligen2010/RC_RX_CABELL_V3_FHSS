@@ -27,7 +27,7 @@
   /* Library dependencies:
    *  
    *  Aaduino Core, SPI, and EEPROM
-   *  http://tmrh20.github.io/RF24 USe the soligen2010 fork is the main verions causes any issues.
+   *  http://tmrh20.github.io/RF24  Use the soligen2010 fork if the main verion causes any issues.
    *  
    *  Arduino Servo was modified and is included with this source.  It was changed to not directly define the Timer 1 ISR
    */
@@ -56,10 +56,12 @@ void setup(void) {
 
 //--------------------------------------------------------------------------------------------------------------------------
 void loop() {  
-  if (getPacket()) {
-    outputChannels();
+  while (true) {               //loop forever without going back to arduino core code
+    if (getPacket()) {
+      outputChannels();
+    }
+    ADC_Processing();   // Process ADC to asyncronously read A6 and A7 for telemetry analog values.  Non-blocking read
   }
-  ADC_Processing();   // Process ADC to asyncronously read A6 and A7 for telemetry analog values.  Non-blocking read
 }
 
 

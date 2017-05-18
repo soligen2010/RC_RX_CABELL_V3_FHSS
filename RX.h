@@ -60,7 +60,7 @@
 
 // FHSS parameters
 #define EXPECTED_PACKET_INTERVAL        ((uint32_t)3000)
-#define INITIAL_PACKET_TIMEOUT          (EXPECTED_PACKET_INTERVAL + 350ul)
+#define INITIAL_PACKET_TIMEOUT          (EXPECTED_PACKET_INTERVAL + 200ul)
 #define RESYNC_TIME_OUT                 ((uint32_t)2000000)                                                      //  Go to resync if no packet recieved in 2 seconds
 #define RESYNC_WAIT_MICROS              (((((uint32_t)CABELL_RADIO_CHANNELS)*5ul)+8ul) * EXPECTED_PACKET_INTERVAL)   // when syncing listen on each channel for slightly longer than the time it takes to cycle through all channels
 
@@ -106,7 +106,7 @@ void outputFailSafeValues(bool callOutputChannels);
 void outputChannels();
 void attachServoPins();
 void detachServoPins();
-void setNextRadioChannel();
+void setNextRadioChannel(bool missedPacket);
 void checkFailsafeDisarmTimeout(unsigned long lastPacketTime,bool inititalGoodPacketRecieved);
 void unbindReciever();
 void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]);
@@ -123,6 +123,9 @@ uint8_t calculateRSSI(bool goodPacket);
 void ADC_Processing();
 bool failSafeButtonHeld();
 void setTelemetryPowerMode(uint8_t option);
+void initializeRadio(RF24* radio);
+void flushReciever();
+void swapRecievers();
 
 #endif
 
