@@ -1,29 +1,31 @@
 ﻿# RC_RX_CABELL_V3_FHSS
 ## Background
 RC_RX_CABELL_V3_FHSS is an open source receiver for remote controlled vehicles.  Developed by Dennis Cabell (KE8FZX)
-The hardware for this receiver is an Arduino Pro Mini (using an ATMEGA328P) and an NRF24L01+ module.  Both are inexpensively available on-line.  Be sure to get the version of a Pro Mini that has pins A4 and A5 broken out.
+The hardware for this receiver is an Arduino Pro Mini (using an ATMEGA328P) and an NRF24L01+ module.  Both are inexpensively available on-line.  Be sure to get the version of a Pro Mini that has pins A4, A5, A6 and A7 broken out.
 
 ~~The transmitter side of this RC protocol is in the Multi-protocol TX Module project at [https://github.com/pascallanger/DIY-Multiprotocol-TX-Module]( https://github.com/pascallanger/DIY-Multiprotocol-TX-Module).~~
 Transmitter code has not yet been merged into Multiprotocol.  To try this out, please use the soligen2010 fork of MultiProtocol at [https://github.com/soligen2010/DIY-Multiprotocol-TX-Module]( https://github.com/soligen2010/DIY-Multiprotocol-TX-Module)
 
 ## The Protocol
-The protocol used is named CABELL_V3 (the third version, but the first version publicly released).  It is a FHSS protocol using the NRF24L01+ 2.4 GHz transceiver.  45 channels are used from 2.403 through 2.447 GHz.  The reason for using 45 channels it to keep operation within the overlap area between the 2.4 GHz ISM band (governed in the USA by FCC part 15) and the HAM portion of the band (governed in the USA by FCC part 97).  This allows part 15 compliant use of the protocol, while allowing licensed amateur radio operators to operate under the less restrictive part 97 rules if desired.
+The protocol used is named CABELL_V3 (the third version, but the first version publicly released).  It is a FHSS protocol using the NRF24L01+ 2.4 GHz transceiver.  45 channels are used from 2.403 through 2.447 GHz.  The reason for using 45 channels is to keep operation within the overlap area between the 2.4 GHz ISM band (governed in the USA by FCC part 15) and the HAM portion of the band (governed in the USA by FCC part 97).  This allows part 15 compliant use of the protocol, while allowing licensed amateur radio operators to operate under the less restrictive part 97 rules if desired.
 
 Each transmitter is assigned a random ID (this is handled by the Multi-protocol TX Module) based on this ID one of 362880 possible channel sequences is used for the frequency hopping.  The hopping pattern algorithm ensures that each hop moves at least 9 channels from the previous channel.  One packet is sent every 3 milliseconds, changing channels with each packet. All 45 channels are used equally.
 
-The CABELL_V3 protocol can be configured to send between 4 and 16 RC channels, however this receiver software is currently only capable of outputting up to 8 channels.  This is because only 8 channels were conveniently laid out on the Arduino Pro Mini, and more than 8 channels over PPM would be too slow.  Future serial output methods will hopefully allow all 16 channels to be used.
+The CABELL_V3 protocol can be configured to send between 4 and 16 RC channels, however this receiver software is currently only capable of outputting up to 8 channels.  This is because only 8 channels were conveniently laid out on the Arduino Pro Mini, and more than 8 channels over PPM would be too slow.  Future serial output methods (SBus?) will hopefully allow all 16 channels to be used.
 
 I recommend reducing the number of channels as much as possible based on what your model requires.  Fewer channels will use a smaller packet size, which improves transmission reliability (fewer bytes sent means less opportunity for errors).
 
-The protocol also assigns each model a different number so one set of model setting does not control the wrong model.  The protocol can distinguish up to 255 different models, but be aware that the multiprotocol transmitter software only does 16.
+The protocol also assigns each model a different number so one model setting does not control the wrong model.  The protocol can distinguish up to 255 different models, but be aware that the multiprotocol transmitter software only does 16.
 
 ## Hardware
-An Arduino Pro Mini and an NRF24L01+ module are needed for this receiver.  Be sure to get the version of a Pro Mini that has pins A4 and A5 broken out (and A6, A7 too for telemetry analog inputs).  The hardware folder contains a schematic and a PCB layout; however this version of the PCB has not been tested.  I am still using the previous version of the PCB and modifying it to implement the changes included in the new version. If anyone tries this PCB version, please open an issue let me know how it works.
+An Arduino Pro Mini and an NRF24L01+ module are needed for this receiver.  Be sure to get the version of a Pro Mini that has pins A4 and A5 broken out (and A6, A7 too for telemetry analog inputs).  The hardware folder contains a schematic and a PCB layout using a single transceiver module; however this version of the PCB has not been tested.  I am still using the previous version of the PCB and modifying it to implement the changes included in the new version. If anyone tries this PCB version, please open an issue let me know how it works.
 
-The PA+LNA versions of the NRF24L01+ module provide more receiver range and reliability than the non PA+LNA versions, However the less expensive modules also work OK if the on-board antenna is replaced with a better antenna, although randomly some units see to work well and others not so well.  I recomend range testing each module.  These modules are also typically unshielded, but work better when shielded.  Here is an outline of the modifications (TODO: add pictures)
+There is also a schematic for using 2 NRF24L01 modules for diversity.  If anyone designs a board for this, please contribute it.
+
+The PA+LNA versions of the NRF24L01+ module provide more receiver range and reliability than the non PA+LNA versions, However the less expensive modules also work OK if the on-board antenna is replaced with a better antenna, although randomly some units see to work well and others not so well.  I recommend range testing each module.  These modules are also typically unshielded, but work better when shielded.  Here is an outline of the modifications (TODO: add pictures)
 
 #### Antenna
-* For the PA_LNA module that has an SMA Connector, remove the connector. A small butane torch to heat the connector work well.  When the solder melts, it pulls right off 
+* For the PA_LNA module that has an SMA Connector, remove the connector. A small butane torch to heat the connector works well.  When the solder melts, it pulls right off 
 * Cut the antenna trace.  On the PA+LNA module cut the trace back far enough so that no portion of the trace extends beyond the ground plane on the back of the board.  For the boards with an antenna, cut the trace leading to the antenna shortly after the last surface mount component (a capacitor, I think).
 * Scrape or sand away the solder mask over the antenna trace.  On the boards with an antenna you will also need to sand away the area next to the trace for a ground connection.  For the PA+LNA module you can re-use the ground connections that were used for the connector.
 * Tin the ground and antenna attachment points with solder
@@ -35,6 +37,8 @@ The PA+LNA versions of the NRF24L01+ module provide more receiver range and reli
 I am no expert, but based on the best understand I have been able to achieve on the theory, using RG-178 or RG-316 (both have speed factor of 69.5) the calculated theoretical lengths to use are:
 * For the shielded portion of the coax, ideally make the length a multiple of 42.5 mm.  170mm seems like a good length. 
 * The length of the antenna at the end should theoretically be 32.5mm (based on center frequency of 2.425 GHz.  I don’t have the proper equipment to verify these lengths, experiment for what works best for you.  My tests showed 32mm seems to work better than 32.5 for a monopole antenna.
+
+The antennas that come with the PA/LNA modules on EBay are often not very good.  Get a good antenna for yout transmitter.  For the transmitter I use a 5dbi antenna constructed as recommend by Andrew McNeil at https://www.youtube.com/watch?v=bs8hvXGJdhM
 
 #### Shielding
 Shielding will require using 2 layers of heat shrink tubing around the whole module.  
@@ -52,30 +56,41 @@ The output method is controlled via the option byte in the protocol header.  The
 
 ## Receiver Setup
 The receiver must be bound to the transmitter. There are several ways for the receiver to enter Bind Mode:
-* A new Arduino will start in bind mode automatically.  Only and Arduino that flashed for the first time does this.  Re-flashing the software will retain the old binding unless the EEPROM has been erased.
+* A new Arduino will start in bind mode automatically.  Only an Arduino that was flashed for the first time does this.  Re-flashing the software will retain the old binding unless the EEPROM has been erased.
 * Erasing the EEPROM on the Arduino will make it start up in bind mode just like a new Arduino. The Arduino sketch [here]( https://github.com/soligen2010/Reset_EEPROM) will erase the EEPROM.
 * Connect the Bind Jumper, or press the Bind button while the receiver powers on.
-* The protocol has a Un-bind command (it erases the EEPROM), after which a re-start will cause the receiver to enter bind mode just like a new Arduino. Still TBD is how to get the Multi-protocol TX Module to send a Un-bind command. After an Unbind the LED will blink until the receiver is re-started.
+* The protocol has a Un-bind command (it erases the EEPROM), after which a re-start will cause the receiver to enter bind mode just like a new Arduino. After an Unbind the LED will blink until the receiver is re-started.
 
- Turn on the transmitter in bind mode.  The LED turn on solid, then will blink slowly after a successful bind.  Re-start the receiver after the bind and take the transmitter out of Bind mode, then test the connection.
+Turn on the transmitter in bind mode.  The LED turn on solid, then will blink slowly after a successful bind.  Re-start the receiver after the bind and take the transmitter out of Bind mode, then test the connection.
 
-## Failsafe
-The receiver will failsafe after 1 second when no packets are received.  If a connection is not restored within 3 seconds then the receiver will disarm.  
+## Fail-safe
+The receiver fail-safes after 1 second when no packets are received.  If a connection is not restored within 3 seconds then the receiver will disarm.  
 * At fail-safe, the throttle is set to minimum, and the other channels are set to the failsafe value.
-* After disarm, the throttle will stay at minimum until the receiver is re-armed.  To re-arm the receiver move the throttle stick to the minimum position.
+* After disarm, the throttle will stay at minimum until the receiver is re-armed.  To re-arm the receiver move the throttle to the minimum position.
 
 When a receiver is bound the failsafe values are reset to the default values, which are throttle minimum and all other channels at mid-point.
 
-## Customizing Failsafe Values
-__Do not set failsafe values while in flight.__  Due to the length of time it takes to write the new failsafe values to EEPROM, the receiver may go into failsafe mode while saving the values, causing loss of control of the model.  Before flying a model, always test the failsafe values after they have been set.
+## Customizing Fail-safe Values
+__Do not set fail-safe values while in flight.__  Due to the length of time it takes to write the new fail-safe values to EEPROM, the receiver may go into fail-safe mode while saving the values, causing loss of control of the model.  Before flying a model, always test the fail-safe values after they have been set.
 
-Failsafe set mode will set the failsafe values.  This can be done one of two ways:
-* A setFailSafe packet can be sent from the transmitter.  The values from the first packet in a series for setFailSafe packets are saved as the new failsafe values.  The LED is turned on when a setFailSafe packet is received, and stays on as long as setFailSafe packets continue to be received.  The LED is turned off when setFailSafe values stop being received
-* After the receiver has initialized, the bind button (or use bind jumper) can be held for one to 2 seconds until the LED is turned on.  The values from the first packet received after the LED is turned on will be saved as the new failsafe values.  The LED will turn off when the button is released (or jumper removed).
+Fail-safe set mode will set the fail-safe values.  This can be done one of two ways:
+* A set-Fail-Safe packet can be sent from the transmitter.  The values from the first packet in a series for set-Fail-Safe packets are saved as the new fail-safe values.  The LED is turned on when a set-Fail-Safe packet is received, and stays on as long as set-Fail-Safe packets continue to be received.  The LED is turned off when set-Fail-Safe values stop being received
+* After the receiver has initialized, the bind button (or use bind jumper) can be held for one to 2 seconds until the LED is turned on.  The values from the first packet received after the LED is turned on will be saved as the new fail-safe values.  The LED will turn off when the button is released (or jumper removed).
 
-When failsafe set mode is entered the LED is turned on and stays on until the failsafe set mode is exited.  Only the values from the first packet received in failsafe set mode are saved (this is to avoid accidentally using up all of the EEPROMs limited number of write operations)
+When fail-safe set mode is entered the LED is turned on and stays on until the failsafe set mode is exited.  Only the values from the first packet received in fail-safe set mode are saved (this is to avoid accidentally using up all of the EEPROMs limited number of write operations)
 
-Values for all channels can be set except for the throttle channel.  The fail safe for throttle is always the minimum throttle.
+Values for all channels can be set except for the throttle channel.  The fail-safe for throttle is always the minimum throttle.
+
+## Diversity
+Diversity is achieved by using 2 NRF24L01 modules.  This improves link reliability and Try to orient the antennas close to 90 degrees to each other so at least one antenna has a good orientation to the transmitter antenna.  The use of a second NRF24L01 module for diversity is optional.  The code automatically detects if one or 2 modules are connected.  See the "with diversity" schematic in the hardware folder for how to wire the NRF24L01 modules.
+
+Both modules listen for an incoming packet.  If the primary receiver does not get a packet when expected, the secondary receiver is checked for the missed packet.  After each packet the primary/secondary recievered are swapped, except in the case where only the primary receiver had the packet, in which case this receiver will retain the primary role.  Telemetry packets are transmitted using the same receiver that was used to read the packet.  If both recievers got the incoming packet, then the packet in the secondary receiver is discarded.
+
+## Taranis Setup using Multiprotocol Module
+Needs work
+
+## Telemetry
+Needs work
 
 ## Packet Format
 
@@ -94,10 +109,13 @@ typedef struct {
    uint8_t  option;
                           /*   mask 0x0F    : Channel reduction.  The number of channels to not send (subtracted frim the 16 max channels) at least 4 are always sent
                            *   mask 0x30>>4 : Reciever outout mode
-                           *                  0 = Single PPM on individual pins for each channel 
-                           *                  1 = SUM PPM on channel 1 pin
-                           *   mask 0x40>>6   Unused 
-                           *   mask 0x80>>7   Unused by RX.  Contains max power override flag for Multiprotocol T module
+                           *                  0 (00) = Single PPM on individual pins for each channel 
+                           *                  1 (01) = SUM PPM on channel 1 pin
+                           *                  2 (10) = Future use.  Reserved for SBUS output
+                           *                  3 (11) = Unused
+                           *   mask 0x40>>6   Contains max power override flag for Multiprotocol TX module. Also sent to RX
+                           *                  The RX uses MAX power when 1, HIGH power when 0
+                           *   mask 0x80>>7   Unused 
                            */  
    uint8_t  modelNum;
    uint8_t  checkSum_LSB;   // Checksum least significant byte
@@ -109,11 +127,30 @@ Each 12 bits in payloadValue is the value of one channel.  The channel order is 
 
 Using channel reduction reduces the number of bytes sent, thereby trimming off the end of the payloadValue array.
 
+## Credits
+davidbuzz on github.  Although none of his code is in this project, my very first foray into DIY rx/tx was based on his esp8266_wifi_tx project.
+
+iforce2d on YouTube.  Although none of his code is in this project, the work he did with the NRF24L01 was a big inspiration.
+
+All the contributors to the pascallanger/DIY-Multiprotocol-TX-Module project on GitHub.  This is a great contribution to the RC community and houses the TX side of this protocol.  
+
+All the contributors to the nRF24/RF24 project on GitHub.  This library was essential to learning to use the NRF24L01.
+
+All the contributors to Arduino Core and standard libraries.  Especially the Servo library, which I modified to adapt to the needs of this project.
+
+The author of the PPM algorithm at https://code.google.com/archive/p/generate-ppm-signal/ I believe this to be david.hasko94@gmail.com
+
+The channel sequence is generated using a permutation algorithm described at http://stackoverflow.com/questions/7918806/finding-n-th-permutation-without-computing-others 
+
+Nick Gammon for his tutorials on interrupts and async reading of ADC pins at https://www.gammon.com.au/adc
+
+My wife, for tolerating the obsession I have had with this project.
+
 ## License Info
 Copyright 2017 by Dennis Cabell
 KE8FZX
  
-To use this software, you must adhere to the license terms described below, and assume all responsibility for the use of the software.  The user is responsible for all consequences or damage that may result from using this software. The user is responsible for ensuring that the hardware used to run this software complies with local regulations and that  any radio signal generated from use of this software is legal for that user to generate.  The author(s) of this software assume no liability whatsoever.  The author(s) of this software is not responsible for legal or civil consequences of  using this software, including, but not limited to, any damages cause by lost control of a vehicle using this software.   If this software is copied or modified, this disclaimer must accompany all copies.
+To use this software, you must adhere to the license terms described below, and assume all responsibility for the use of the software.  The user is responsible for all consequences or damage that may result from using this software. The user is responsible for ensuring that the hardware used to run this software complies with local regulations and that any radio signal generated from use of this software is legal for that user to generate.  The author(s) of this software assume no liability whatsoever.  The author(s) of this software is not responsible for legal or civil consequences of using this software, including, but not limited to, any damages cause by lost control of a vehicle using this software.   If this software is copied or modified, this disclaimer must accompany all copies.
  
 This project is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
 
