@@ -32,6 +32,9 @@
 #include "Rx_Tx_Util.h"
 #include "SUM_PPM.h"
 #include "MyServo.h"    // hacked to remove timer1 ISR - must call this in my own ISR
+#include "TestHarness.h" 
+#include "RSSI.h" 
+
 
 RF24 radio1(RADIO1_CSN_PIN,RADIO1_CSN_PIN);  
 RF24 radio2(RADIO2_CSN_PIN,RADIO2_CSN_PIN);  
@@ -67,6 +70,12 @@ int16_t analogValue[2] = {0,0};
 
 MyServo channelServo[RX_NUM_CHANNELS];
 
+#ifdef TEST_HARNESS
+  TestHarness testOut;
+#endif
+
+RSSI rssi;
+
 //--------------------------------------------------------------------------------------------------------------------------
 void attachServoPins() {
 
@@ -95,7 +104,7 @@ void setupReciever() {
   if ((digitalRead(BIND_BUTTON_PIN) == LOW) || (softRebindFlag != DO_NOT_SOFT_REBIND)) {
     bindMode = true;
     radioPipeID = CABELL_BIND_RADIO_ADDR;
-    Serial.println ("Bind Mode ");
+    Serial.println (F("Bind Mode "));
     digitalWrite(LED_PIN, HIGH);      // Turn on LED to indicate bind mode
     radioNormalRxPipeID = 0x01<<43;   // This is a number bigger than the max possible pipe ID, which only uses 40 bits.  This makes sure the bind routine writes to EEPROM
   }
@@ -120,19 +129,19 @@ void setupReciever() {
   // If only one is present, then both primary and secondary reciever pointers end up pointing to the same radio.
   // This way the reciecer swap logic doesn't care if one or two recieves are actually connected
   if (radio2.isChipConnected()) {
-    Serial.println("Backup radio detected");
+    Serial.println(F("Backup radio detected"));
     secondaryReciever = &radio2;
   } else {
-    Serial.println("Backup radio not detected");
+    Serial.println(F("Backup radio not detected"));
     secondaryReciever = &radio1;
     digitalWrite(RADIO2_CSN_PIN,HIGH);   // If the backup radio is not present, set this pin high becasue some older 1 radio configurations used this as CE on the primary radio
   }  
   if (radio1.isChipConnected()) {
     primaryReciever = &radio1;
-    Serial.println("Primary radio detected");
+    Serial.println(F("Primary radio detected"));
   } else {
     primaryReciever = &radio2;
-    Serial.println("Primary radio not detected");
+    Serial.println(F("Primary radio not detected"));
   }
 
   RADIO_IRQ_SET_INPUT;
@@ -149,8 +158,8 @@ void setupReciever() {
 
   outputFailSafeValues(false);   // initialize default values for output channels
   
-  Serial.print("Radio ID: ");Serial.print((uint32_t)(radioPipeID>>32)); Serial.print("    ");Serial.println((uint32_t)((radioPipeID<<32)>>32));
-  Serial.print("Current Model Number: ");Serial.println(currentModel);
+  Serial.print(F("Radio ID: "));Serial.print((uint32_t)(radioPipeID>>32)); Serial.print(F("    "));Serial.println((uint32_t)((radioPipeID<<32)>>32));
+  Serial.print(F("Current Model Number: "));Serial.println(currentModel);
   
  //setup pin change interrupt
   cli();    // switch interrupts off while messing with their settings  
@@ -158,45 +167,52 @@ void setupReciever() {
   PCMSK1 = RADIO_IRQ_PIN_MASK;
   sei();
 
+  #ifdef TEST_HARNESS
+    testOut.init();
+    Serial.println(F("Operating as a test harness.  Servo output disabled."));
+  #endif
+
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-ISR(PCINT1_vect) {
-  if (IS_RADIO_IRQ_on)  {  // pulled low when packet is recieved
-    packetReady = true;
+  ISR(PCINT1_vect) {
+    if (IS_RADIO_IRQ_on)  {  // pulled low when packet is recieved
+      packetReady = true;
+    }
   }
-}
 
 //--------------------------------------------------------------------------------------------------------------------------
 void outputChannels() {
-  if (!throttleArmed) {
-    channelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;     // Safety precaution.  Min throttle if not armed
-  }
-  
-  bool firstPacketOnMode = false;
-
-  if (currentOutputMode != nextOutputMode) {   // If new mode, turn off all modes
-   firstPacketOnMode = true;
-   detachServoPins();
-   if (PPMEnabled()) ppmDisable();
-  }
-
-  if (nextOutputMode == 0) {
-    outputPWM();                               // Do this first so we have something to send  when PPM enabled
-    if (firstPacketOnMode) {                   // First time through attach pins to start output
-      attachServoPins();
+#ifndef TEST_HARNESS
+    if (!throttleArmed) {
+      channelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;     // Safety precaution.  Min throttle if not armed
     }
-  }
-
-  if (nextOutputMode == 1) {
-    outputSumPPM();                           // Do this first so we have something to send  when PPM enabled
-    if (firstPacketOnMode) {
-      if (!PPMEnabled()) {
-        ppmSetup(PPM_OUTPUT_PIN, RX_NUM_CHANNELS);
+    
+    bool firstPacketOnMode = false;
+  
+    if (currentOutputMode != nextOutputMode) {   // If new mode, turn off all modes
+     firstPacketOnMode = true;
+     detachServoPins();
+     if (PPMEnabled()) ppmDisable();
+    }
+  
+    if (nextOutputMode == 0) {
+      outputPWM();                               // Do this first so we have something to send  when PPM enabled
+      if (firstPacketOnMode) {                   // First time through attach pins to start output
+        attachServoPins();
       }
     }
-  }
-  currentOutputMode = nextOutputMode;
+  
+    if (nextOutputMode == 1) {
+      outputSumPPM();                           // Do this first so we have something to send  when PPM enabled
+      if (firstPacketOnMode) {
+        if (!PPMEnabled()) {
+          ppmSetup(PPM_OUTPUT_PIN, RX_NUM_CHANNELS);
+        }
+      }
+    }
+    currentOutputMode = nextOutputMode;
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -245,12 +261,25 @@ bool getPacket() {
         //packet will be picked up on next loop through
         packetReady = true;
         swapRecievers();
-        //Serial.println("SR");
+        //Serial.println("SR);
+        rssi.secondaryHit();
+        #ifdef TEST_HARNESS
+           testOut.secondaryHit();
+        #endif
       } else {
         //if (inititalGoodPacketRecieved) Serial.println("miss");
+        rssi.miss();
+        #ifdef TEST_HARNESS
+           testOut.miss();
+        #endif
         setNextRadioChannel(true);       //true indicated that packet was missed         
         if ((long)(nextAutomaticChannelSwitch - lastRadioPacketeRecievedTime) > ((long)RESYNC_TIME_OUT)) {  // if a long time passed, increase timeout duration to re-sync with the TX
-          Serial.println("Re-sync Attempt");
+          telemetryEnabled = false;
+          #ifdef TEST_HARNESS
+            testOut.reSync();
+          #else
+            Serial.println(F("Re-sync Attempt"));
+          #endif
           nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
           setNewDataRate();                       //Alternate data rates until signal found
         } else {
@@ -261,14 +290,24 @@ bool getPacket() {
     }
   }  else {
      lastRadioPacketeRecievedTime = micros();   //Use this time to calculate the next expected packet so when we miss packets we can change channels
-     //if (inititalGoodPacketRecieved) Serial.println("hit");
      nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + INITIAL_PACKET_TIMEOUT; 
      packetReady = false;
+     //if (inititalGoodPacketRecieved) Serial.println("hit");
+     bool strongSignal = primaryReciever->testRPD();  // save this now while the value io latched
      goodPacket_rx = readAndProcessPacket();
      if (goodPacket_rx) {
        inititalGoodPacketRecieved = true;
        lastPacketTime = micros();
        failSafeDisplayFlag = true;
+       rssi.hit(strongSignal);
+       #ifdef TEST_HARNESS
+          testOut.hit(strongSignal);
+       #endif
+     } else {
+       rssi.badPacket(strongSignal);
+       #ifdef TEST_HARNESS
+         testOut.badPacket(strongSignal);
+       #endif
      }
   }
   return goodPacket_rx;
@@ -284,7 +323,7 @@ void checkFailsafeDisarmTimeout(unsigned long lastPacketTime,bool inititalGoodPa
   
   if (((long)(holdMicros - lastPacketTime) >  ((long)RX_DISARM_TIMEOUT)) || (!inititalGoodPacketRecieved && ((long)(holdMicros - lastPacketTime)  > ((long)RX_DISARM_TIMEOUT)) ) ) { 
     if (throttleArmed) {
-      Serial.println("Disarming throttle");
+      Serial.println(F("Disarming throttle"));
       throttleArmed = false;
     }
   }
@@ -342,34 +381,39 @@ void outputFailSafeValues(bool callOutputChannels) {
     channelValues[x] = failSafeChannelValues[x];
     //Serial.println(channelValues[x]);
   }
-  
+
   if (failSafeDisplayFlag) {  
-    Serial.println(F("Failsafe"));
+    #ifdef TEST_HARNESS
+      testOut.failSafe();
+    #else
+      Serial.println(F("Failsafe"));
+    #endif
     failSafeDisplayFlag = false;
   }
-  
   if (callOutputChannels)
     outputChannels();
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-ISR(TIMER1_COMPA_vect){
-  if (currentOutputMode == 0)
-    MyServoInterruptOneProcessing();
-  else if (currentOutputMode == 1)
-    SUM_PPM_ISR();
-}
+#ifndef TEST_HARNESS
+  ISR(TIMER1_COMPA_vect){
+    if (currentOutputMode == 0)
+      MyServoInterruptOneProcessing();
+    else if (currentOutputMode == 1)
+      SUM_PPM_ISR();
+  }
+#endif
 
 //--------------------------------------------------------------------------------------------------------------------------
 void unbindReciever() {
   // Reset all of flash memory to unbind reciever
   uint8_t value = 0xFF;
-  Serial.print("Overwriting flash with value ");Serial.println(value, HEX);
+  Serial.print(F("Overwriting flash with value "));Serial.println(value, HEX);
   for (int x = 0; x < 1024; x++) {
         EEPROM.put(x,value);
   }
   
-  Serial.println("Reciever un-bound.  Reboot to enter bind mode");
+  Serial.println(F("Reciever un-bound.  Reboot to enter bind mode"));
   outputFailSafeValues(true);
   bool ledState = false;
   while (true) {                                           // Flash LED forever indicating unbound
@@ -392,12 +436,12 @@ void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]) {
     EEPROM.put(currentModelEEPROMAddress,modelNum);
     radioNormalRxPipeID = newRadioPipeID;
     EEPROM.put(radioPipeEEPROMAddress,radioNormalRxPipeID);
-    Serial.print("Bound to new TX address for model number ");Serial.println(modelNum);
+    Serial.print(F("Bound to new TX address for model number "));Serial.println(modelNum);
     digitalWrite(LED_PIN, LOW);                              // Turn off LED to indicate sucessful bind
     EEPROM.put(softRebindFlagEEPROMAddress,(uint8_t)DO_NOT_SOFT_REBIND);
     setFailSafeDefaultValues();
     outputFailSafeValues(true);
-    Serial.println("Reciever bound.  Reboot to enter normal mode");
+    Serial.println(F("Reciever bound.  Reboot to enter normal mode"));
     bool ledState = false;
     while (true) {                                           // Flash LED forever indicating bound
       digitalWrite(LED_PIN, ledState);
@@ -435,7 +479,7 @@ void setFailSafeValues(uint16_t newFailsafeValues[]) {
     }
     failSafeChannelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;           // Throttle should always be the min value when failsafe}
     EEPROM.put(failSafeChannelValuesEEPROMAddress,failSafeChannelValues);  
-    Serial.println("Fail Safe Values Set");
+    Serial.println(F("Fail Safe Values Set"));
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -500,10 +544,9 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   } 
   else
   {
-    Serial.println("RX Pckt Err");
+    Serial.println("RX Pckt Err");    // Dont use F macro here.  Want this to be fast as it is in the main loop logic
   }  
 
-  calculateRSSI(packet_rx);   // This will maintain the RSSI based on if the packet was good or not.
   return packet_rx;
 }
 
@@ -525,7 +568,7 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
                                                   }
                                                   else
                                                   {
-                                                    Serial.println("Bind command detected but reciever not in bind mode");
+                                                    Serial.println(F("Bind command detected but reciever not in bind mode"));
                                                     packet_rx = false;
                                                   }
                                                   break;
@@ -540,7 +583,7 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
                                                        else 
                                                        {
                                                          packet_rx = false;
-                                                         Serial.println("Wrong Model Number");
+                                                         Serial.println(F("Wrong Model Number"));
                                                        }
                                                        break;
                                                       
@@ -549,14 +592,14 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
                                                     digitalWrite(LED_PIN, LOW);
                                                     failSafeValuesHaveBeenSet = false;             // Reset when not in setFailSafe mode so next time failsafe is to be set it will take
                                                     if (!throttleArmed && (tempHoldValues[THROTTLE_CHANNEL] <= CHANNEL_MIN_VALUE + 10)) { 
-                                                      Serial.println("Throttle Armed");
+                                                      Serial.println("Throttle Armed");             // Dont use F macro here.  Want this to be fast as it is in the main loop logic
                                                       throttleArmed = true;
                                                     }
                                                   } 
                                                   else 
                                                   {
                                                     packet_rx = false;
-                                                    Serial.println("Wrong Model Number");
+                                                    Serial.println(F("Wrong Model Number"));
                                                   }
                                                   break;
                                                   
@@ -564,10 +607,10 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
                                                     unbindReciever();
                                                   } else {
                                                     packet_rx = false;
-                                                    Serial.println("Wrong Model Number");
+                                                    Serial.println(F("Wrong Model Number"));
                                                  }
                                                   break;
-    default : Serial.println("Unknown RxMode");
+    default : Serial.println(F("Unknown RxMode"));
               packet_rx = false;
               break;          
   }
@@ -630,7 +673,7 @@ void sendTelemetryPacket() {
   packetCounter++;
   sendPacket[0] &= 0x7F;                 // clear 8th bit
   sendPacket[0] |= packetCounter<<7;     // This causes the 8th bit of the first byte to toggle with each xmit so consecutive payloads are not identical.  This is a work around for a reported bug in clone NRF24L01 chips that mis-took this case for a re-transmit of the same packet.
-  sendPacket[1] = calculateRSSI(false);  // Passing false will return the RSSI without affecting the RSSI calculation.  Another call to calulateRSSI elsewhere will pass true for a good packet to maintain the RSSI value.
+  sendPacket[1] = rssi.getRSSI();   
   sendPacket[2] = analogValue[0]/4;      // Send a 8 bit value (0 to 255) of the analog input.  Can be used for Lipo voltage or other analog input for telemetry
   sendPacket[3] = analogValue[1]/4;      // Send a 8 bit value (0 to 255) of the analog input.  Can be used for Lipo voltage or other analog input for telemetry
 
@@ -649,31 +692,6 @@ void sendTelemetryPacket() {
       delayMicroseconds(((unsigned long)packetSize * 8ul)  +  73ul + 140ul)   ;
 }
 
-
-//--------------------------------------------------------------------------------------------------------------------------
-uint8_t calculateRSSI(bool goodPacket) {
-  // Passing in true for a good packet will improve the RSSI in each interval.
-  // This can additionally be called at any time with false to just return the current RSSI and it wont affect calculation (but may trigger the interval end logic) 
-
-  static uint8_t rssi = TELEMETRY_RSSI_MAX_VALUE;                                           // Initialize to perfect RSSI until it can be calcualted
-  static unsigned long nextRssiCalcTime = micros() + TELEMETRY_RSSI_CALC_INTERVAL;
-  static uint16_t rssiCounter = 0;
-
-  if (goodPacket)
-    rssiCounter++;
-  
-  if ((long)(micros() - nextRssiCalcTime) >= 0 ) {      // Interval end
-    // RSSI is the based on hte expected packet rate for the interval vs. actiual packets.  255 is 100% of the expected rate.
-    nextRssiCalcTime = micros() + TELEMETRY_RSSI_CALC_INTERVAL;
-    // calculate rssi as a ratio of expected to actual packets as a percent then map to actual range
-    uint16_t rssiCalc = (uint16_t) (((float)rssiCounter / (float)((uint16_t)((float)TELEMETRY_RSSI_CALC_INTERVAL/(float)EXPECTED_PACKET_INTERVAL)) * (float) (TELEMETRY_RSSI_MAX_VALUE - TELEMETRY_RSSI_MIN_VALUE)) + float(TELEMETRY_RSSI_MIN_VALUE));
-    rssi = constrain(rssiCalc,TELEMETRY_RSSI_MIN_VALUE,TELEMETRY_RSSI_MAX_VALUE);
-//    Serial.print(rssiCounter);Serial.print(' ');
-//    Serial.println(rssi);
-    rssiCounter = 0;
-  }
-  return rssi;
-}
 
 //--------------------------------------------------------------------------------------------------------------------------
 // based on ADC Interrupt example from https://www.gammon.com.au/adc

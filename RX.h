@@ -66,10 +66,6 @@
 
 #define DO_NOT_SOFT_REBIND   0xAA
 
-#define TELEMETRY_RSSI_CALC_INTERVAL    ((uint32_t)500000)    // number of microseconds to wait before re-calulating RSSI.  RSSI is based on packet rate during this interval
-#define TELEMETRY_RSSI_MIN_VALUE        0                     // The lowest possible RSSI value = zero packet rate
-#define TELEMETRY_RSSI_MAX_VALUE        100                     // The highest possible RSSI value = 100% packet rate
-
 #define SERVO_OUTPUT_PINS         {PITCH_PIN,ROLL_PIN,YAW_PIN,THROTTLE_PIN,AUX1_PIN,AUX2_PIN,AUX3_PIN,AUX4_PIN}
 
 typedef struct {

@@ -52,6 +52,16 @@
 #define TELEMETRY_ANALOG_INPUT_1  6   // Pin A6
 #define TELEMETRY_ANALOG_INPUT_2  7   // Pin A7
 
+#ifdef TEST_HARNESS
+  // Pins for test harness LCD display
+  #define D4_PIN     9
+  #define D5_PIN     8
+  #define D6_PIN     7
+  #define D7_PIN     6
+  #define RS_PIN     5
+  #define EN_PIN     4
+#endif
+
 // configure A2 for radio IRQ 
 #define RADIO_IRQ_PIN          A2 
 #define RADIO_IRQ_PIN_bit      2           //A2 = PC2

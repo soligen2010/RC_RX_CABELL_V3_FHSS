@@ -29,6 +29,7 @@
  */
  
 #include "RX.h"
+#include "Arduino.h"
 
 volatile uint8_t ppmPin = 0xFF;  // initialized to invalid pin
 volatile int16_t ppmValueArray [CABELL_NUM_CHANNELS]; 
