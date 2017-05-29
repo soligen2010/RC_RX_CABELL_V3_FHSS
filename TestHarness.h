@@ -47,7 +47,7 @@
 
 #include "Arduino.h"
 
-#define PACKET_DISPLAY_INTERVAL  1000    // The number of expected packets between display updates. 1000 is 3 seconds
+#define PACKET_DISPLAY_INTERVAL  1000    // The number of expected packets between display updates. 1000 is 3 seconds non telemetry, 3.5 with telemetry
 
 class TestHarness {
 
@@ -55,12 +55,12 @@ class TestHarness {
       TestHarness ( );
                                      
       void init();
-      void hit(bool strongSignal);
+      void hit();
       void miss();
       void failSafe();
       void reSync();
       void secondaryHit();      
-      void badPacket(bool strongSignal);      
+      void badPacket();      
 
      
   private:
@@ -73,7 +73,6 @@ class TestHarness {
       int sequentialMissCount = 0;
       int holdSequentialMissCount = 0;
       int secondaryHitCount = 0;
-      int weakHitCount = 0;
       int badPacketCount = 0;
       int packetCount = 0;
 
@@ -85,7 +84,6 @@ class TestHarness {
       int displaySequentialMissCount = 0;
       int displayHoldSequentialMissCount = 0;
       int displaySecondaryHitCount = 0;
-      int displayWeakHitCount = 0;
       int displayBadPacketCount = 0;
       int displayPacketCount = 0;
       float displayPacketRate = 0.0;

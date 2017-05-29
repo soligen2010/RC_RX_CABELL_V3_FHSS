@@ -33,9 +33,8 @@ RSSI::RSSI ()
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-void RSSI::hit(bool strongSignal) {
+void RSSI::hit() {
   hitCount++;
-  if (!strongSignal) weakHitCount++;
   sequentialMissTrack = constrain(sequentialMissTrack - RSSI_MISS_ADJUSTMENT_RECOVERY,TELEMETRY_RSSI_MIN_VALUE,TELEMETRY_RSSI_MAX_VALUE);
   packetProcess();
 }
@@ -56,10 +55,10 @@ void RSSI::secondaryHit() {
 
 
 //--------------------------------------------------------------------------------------------------------------------------
-void RSSI::badPacket(bool strongSignal) {
+void RSSI::badPacket() {
   // bad packets generally don't happen, but it will also count as a hit since the error was likely introduced on the SPI bus since it passed the NRF24L01 internal checksum
   badPacketCount++;
-  hit(strongSignal);
+  hit();
 }
 
 
@@ -78,7 +77,6 @@ void RSSI::resetCounters() {
   hitCount = 0;
   missCount = 0;
   secondaryHitCount = 0;
-  weakHitCount = 0;
   badPacketCount = 0;
   packetCount = 0;
 }

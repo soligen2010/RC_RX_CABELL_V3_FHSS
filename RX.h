@@ -27,7 +27,7 @@
 #ifndef __have__RC_RX_TX_RX_h__
 #define __have__RC_RX_TX_RX_h__
 
-#include "RF24.h"
+#include "My_RF24.h"
 
 #define RX_NUM_CHANNELS            8
 
@@ -59,10 +59,13 @@
 #define RX_DISARM_TIMEOUT         3000000     // If no packet recieved in this time frame disarm the throttle. In microseconds
 
 // FHSS parameters
-#define EXPECTED_PACKET_INTERVAL        ((uint32_t)3000)
-#define INITIAL_PACKET_TIMEOUT          (EXPECTED_PACKET_INTERVAL + 200ul)
+#define DEFAULT_PACKET_INTERVAL         ((uint32_t)3000) 
+#define MAX_PACKET_INTERVAL             ((uint32_t)4000) // Max packet interval - used with telemetry and 16 channels
+#define INITIAL_PACKET_TIMEOUT_ADD      200ul
 #define RESYNC_TIME_OUT                 ((uint32_t)2000000)                                                      //  Go to resync if no packet recieved in 2 seconds
-#define RESYNC_WAIT_MICROS              (((((uint32_t)CABELL_RADIO_CHANNELS)*5ul)+8ul) * EXPECTED_PACKET_INTERVAL)   // when syncing listen on each channel for slightly longer than the time it takes to cycle through all channels
+#define RESYNC_WAIT_MICROS              (((((uint32_t)CABELL_RADIO_CHANNELS)*5ul)+8ul) * MAX_PACKET_INTERVAL)   // when syncing listen on each channel for slightly longer than the time it takes to cycle through all channels
+
+#define INITIAL_TELEMETRY_PACKETS_TO_SKIP  1000   // dont send initial telemetry packets to avoid anoying warnings at startup
 
 #define DO_NOT_SOFT_REBIND   0xAA
 
@@ -114,13 +117,12 @@ void setFailSafeDefaultValues();
 void loadFailSafeDefaultValues();
 void setFailSafeValues(uint16_t newFailsafeValues[]);
 void setNewDataRate();
-void sendTelemetryPacket();
+unsigned long  sendTelemetryPacket();    //returns micros of when the transmit is esspected to be complete
 uint8_t calculateRSSI(bool goodPacket);
 void ADC_Processing();
 bool failSafeButtonHeld();
 void setTelemetryPowerMode(uint8_t option);
-void initializeRadio(RF24* radio);
-void flushReciever();
+void initializeRadio(My_RF24* radio);
 void swapRecievers();
 
 #endif

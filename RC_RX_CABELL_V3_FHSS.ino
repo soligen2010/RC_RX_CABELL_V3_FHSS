@@ -27,9 +27,12 @@
   /* Library dependencies:
    *  
    *  Aaduino Core, SPI, and EEPROM
-   *  http://tmrh20.github.io/RF24  Use the soligen2010 fork if the main verion causes any issues.
+   *    
+   * https://github.com/nRF24/RF24 library copied and modified to streamline
+   * opeerations specific to this application in order to improve loop timing.
+   * See http://tmrh20.github.io/RF24  for documentation on the standard version of the library.
    *  
-   *  Arduino Servo was modified and is included with this source.  It was changed to not directly define the Timer 1 ISR
+   * Arduino Servo was modified and is included with this source.  It was changed to not directly define the Timer 1 ISR
    */
    
 #include "RX.h"

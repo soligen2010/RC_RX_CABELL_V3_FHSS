@@ -40,10 +40,10 @@ class RSSI {
   public:
       RSSI ( );
                                      
-      void hit(bool strongSignal);
+      void hit();
       void miss();
       void secondaryHit();      
-      void badPacket(bool strongSignal); 
+      void badPacket(); 
       uint8_t getRSSI();     
      
   private:
@@ -53,7 +53,6 @@ class RSSI {
       int hitCount = 0;
       int missCount = 0;
       int secondaryHitCount = 0;
-      int weakHitCount = 0;
       int badPacketCount = 0;
       int packetCount = 0;
 

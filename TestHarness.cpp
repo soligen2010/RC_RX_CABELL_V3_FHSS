@@ -53,13 +53,12 @@ void TestHarness::init() {
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-void TestHarness::hit(bool strongSignal) {
+void TestHarness::hit() {
   if (!firstPacketHit) resetCounters();
   firstPacketHit = true;
 
   hitCount++;
   sequentialMissCount = 0;
-  if (!strongSignal) weakHitCount++;
 
   packetProcess();
 }
@@ -82,9 +81,9 @@ void TestHarness::secondaryHit() {
 
 
 //--------------------------------------------------------------------------------------------------------------------------
-void TestHarness::badPacket(bool strongSignal) {
+void TestHarness::badPacket() {
   badPacketCount++;
-  hit(strongSignal);
+  hit();
 }
 
 
@@ -121,7 +120,6 @@ void TestHarness::packetProcess() {
       displaySequentialMissCount = holdSequentialMissCount;
       displayHoldSequentialMissCount = holdSequentialMissCount;
       displaySecondaryHitCount = secondaryHitCount;
-      displayWeakHitCount = weakHitCount;
       displayBadPacketCount = badPacketCount;
       displayPacketCount = packetCount;
       displayPacketRate = (float)(displayHitCount - displayBadPacketCount)*100.0/(float)(displayHitCount+displayMissCount);
@@ -141,7 +139,6 @@ void TestHarness::resetCounters() {
   sequentialMissCount = 0;
   holdSequentialMissCount = 0;
   secondaryHitCount = 0;
-  weakHitCount = 0;
   badPacketCount = 0;
   packetCount = 0;
   firstPacketHit = false;
@@ -164,13 +161,9 @@ void TestHarness::display(int LCD_Command) {
   if ( LCD_Command  == 21)  lcd.setCursor(0, 1);
   if ( LCD_Command  == 23)  lcd.print(displayHitCount);
   if ( LCD_Command  == 25)  lcd.setCursor(7, 1);
-  if ( LCD_Command  == 27)  lcd.print("     ");
+  if ( LCD_Command  == 27)  lcd.print("      ");
   if ( LCD_Command  == 29)  lcd.setCursor(7, 1);
   if ( LCD_Command  == 31)  lcd.print(displayMissCount);
-  if ( LCD_Command  == 33)  lcd.setCursor(12, 1);
-  if ( LCD_Command  == 35)  lcd.print("    ");
-  if ( LCD_Command  == 37)  lcd.setCursor(12, 1);
-  if ( LCD_Command  == 39)  lcd.print(displayWeakHitCount);
   if ( LCD_Command  == 41)  lcd.setCursor(12, 0);
   if ( LCD_Command  == 43)  lcd.print("    ");
   if ( LCD_Command  == 45)  lcd.setCursor(12, 0);
