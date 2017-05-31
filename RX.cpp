@@ -35,7 +35,7 @@
 #include "TestHarness.h" 
 #include "RSSI.h" 
 #include "My_nRF24L01.h"
-
+#include "SBUS.h"
 
 My_RF24 radio1(RADIO1_CSN_PIN,RADIO1_CSN_PIN);  
 My_RF24 radio2(RADIO2_CSN_PIN,RADIO2_CSN_PIN);  
@@ -62,6 +62,7 @@ uint16_t failSafeChannelValues [CABELL_NUM_CHANNELS];
 bool throttleArmed = true;
 bool bindMode = false;     // when true send bind command to cause reciever to bind enter bind mode
 bool failSafeDisplayFlag = true;
+bool packetMissed = false;
 bool fastDataRate = true;
 uint32_t packetInterval = DEFAULT_PACKET_INTERVAL;
 
@@ -207,17 +208,26 @@ void outputChannels() {
     }
   
     if (nextOutputMode == 0) {
-      outputPWM();                               // Do this first so we have something to send  when PPM enabled
+      outputPWM();                               // Do this first so we have something to send when PWM enabled
       if (firstPacketOnMode) {                   // First time through attach pins to start output
         attachServoPins();
       }
     }
   
     if (nextOutputMode == 1) {
-      outputSumPPM();                           // Do this first so we have something to send  when PPM enabled
+      outputSumPPM();                           // Do this first so we have something to send when PPM enabled
       if (firstPacketOnMode) {
         if (!PPMEnabled()) {
           ppmSetup(PPM_OUTPUT_PIN, RX_NUM_CHANNELS);
+        }
+      }
+    }
+  
+    if (nextOutputMode == 2) {
+      outputSbus();                           // Do this first so we have something to send when SBUS enabled
+      if (firstPacketOnMode) {
+        if (!sbusEnabled()) {
+          sbusSetup();
         }
       }
     }
@@ -299,6 +309,7 @@ bool getPacket() {
         #endif
       } else {
         //if (inititalGoodPacketRecieved) Serial.println("miss");
+        packetMissed = true;
         rssi.miss();
         #ifdef TEST_HARNESS
            testOut.miss();
@@ -331,12 +342,14 @@ bool getPacket() {
       inititalGoodPacketRecieved = true;
       lastPacketTime = micros();
       failSafeDisplayFlag = true;
+      packetMissed = false;
       rssi.hit();
       #ifdef TEST_HARNESS
         testOut.hit();
       #endif
     } else {
       rssi.badPacket();
+      packetMissed = true;
       #ifdef TEST_HARNESS
         testOut.badPacket();
       #endif
@@ -404,6 +417,37 @@ void outputSumPPM() {  // output as AETR
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
+void outputSbus() {  // output as AETR
+  int adjusted_x;
+  for(int x = 0; x < CABELL_NUM_CHANNELS ; x++) {  // 
+
+    //set adjusted_x to be in AETR order
+    switch (x)
+    {
+      case 0:
+        adjusted_x = ROLL_CHANNEL;
+        break;
+      case 1:
+        adjusted_x = PITCH_CHANNEL;
+        break;
+      case 2:
+        adjusted_x = THROTTLE_CHANNEL;
+        break;
+      case 3:
+        adjusted_x = YAW_CHANNEL;
+        break;
+      default:
+        adjusted_x = x;
+    }
+    
+    setSbusOutputChannelValue(x, channelValues[adjusted_x]);
+  //  Serial.print(channelValues[x]); Serial.print("\t"); 
+  }
+  sbusSetFailsafe(!failSafeDisplayFlag); 
+  sbusSetFrameLost(packetMissed); 
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
 void outputFailSafeValues(bool callOutputChannels) {
 
   loadFailSafeDefaultValues();
@@ -433,6 +477,8 @@ void outputFailSafeValues(bool callOutputChannels) {
       MyServoInterruptOneProcessing();
     else if (currentOutputMode == 1)
       SUM_PPM_ISR();
+    else if (currentOutputMode == 2)
+      SBUS_ISR();
   }
 #endif
 

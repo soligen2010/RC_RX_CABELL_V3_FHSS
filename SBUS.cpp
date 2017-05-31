@@ -30,33 +30,13 @@
  
 #include "RX.h"
 #include "Arduino.h"
-#include "SUM_PPM.h"
+#include "SBUS.h"
 
-volatile uint8_t ppmPin = 0xFF;  // initialized to invalid pin
-volatile int16_t ppmValueArray [CABELL_NUM_CHANNELS]; 
-volatile uint8_t ppmChannelCount; 
-bool ppmEnabled = false;
-
+bool sbusEnabledFlag = false;
+volatile uint8_t sbusPacket[25];
 
 //------------------------------------------------------------------------------------------------------------------------
-void ppmSetup(uint8_t pin, uint8_t channelCount){  
-  //this program will put out a PPM signal
-
-  // from: https://code.google.com/archive/p/generate-ppm-signal/
-  
-  //////////////////////CONFIGURATION///////////////////////////////
-  #define PPM_FrLen 22500  //set the PPM frame length in microseconds (1ms = 1000µs)
-  #define PPM_MaxChannels 8  //The maximum number of channels that can be sent in a frame
-  #define PPM_PulseLen 300  //set the pulse length
-  #define onState 1  //set polarity of the pulses: 1 is positive, 0 is negative
-  //////////////////////////////////////////////////////////////////
-
-  ppmPin = pin;
-  ppmChannelCount = min(PPM_MaxChannels,channelCount);
-  
-  pinMode(ppmPin, OUTPUT);
-  digitalWrite(ppmPin, !onState);  //set the PPM signal pin to the default state (off)
-
+void sbusSetup(){  
   noInterrupts();
   TCCR1A = 0; // set entire TCCR1 register to 0
   TCCR1B = 0;
@@ -65,60 +45,78 @@ void ppmSetup(uint8_t pin, uint8_t channelCount){
   TCCR1B |= (1 << WGM12);  // turn on CTC mode
   TCCR1B |= (1 << CS11);  // 8 prescaler: 0,5 microseconds at 16mhz
   TIMSK1 |= (1 << OCIE1A); // enable timer compare interrupt
+  sbusPacket[SBUS_START_BYTE] = 0xF0;
+  sbusPacket[SBUS_FLAG_BYTE]  = 0x00;
+  sbusPacket[SBUS_END_BYTE]   = 0x00;
+  sbusEnabledFlag = true;
   interrupts();
-  ppmEnabled = true;
-
 }
 
-bool PPMEnabled() {
-  return ppmEnabled;
+bool sbusEnabled() {
+  return sbusEnabledFlag;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-void ppmDisable(){  
-  
+void sbusDisable(){    
   noInterrupts();
   TCCR1A = 0; // set entire TCCR1 register to 0
   TCCR1B = 0;
   TIMSK1 &= ~(1<<OCIE1A);   // Disable Interrupt Counter 1, output compare A (TIMER1_CMPA_vect)
   interrupts();
-  ppmEnabled = false;
-
+  sbusEnabledFlag = false;
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-void setPPMOutputChannelValue(uint8_t channel, int value) {
-  ppmValueArray[channel] = value;
-}
+void setSbusOutputChannelValue(uint8_t channel, int value) {
 
-//------------------------------------------------------------------------------------------------------------------------
-void SUM_PPM_ISR() {  
-  static boolean state = true;
-  static byte cur_chan_numb = 0;
-  static unsigned int calc_rest = 0;
-  
-  if(state) {  //start pulse
-    digitalWrite(ppmPin, onState);
-    OCR1A = PPM_PulseLen * 2;
-    state = false;
-  }
-  else{  //end pulse and calculate when to start the next pulse
-  
-    digitalWrite(ppmPin, !onState);
-    state = true;
+  uint8_t firstBit = 8 + (constrain(channel,0,15) * 11);  // Start byte plus 11 bits per channel. 16 channels
+  uint8_t byteIndex = firstBit / 8;
+  uint8_t bitIndex = 7 - (firstBit % 8);
+  uint16_t adjustedValue = value - 477;
 
-    if(cur_chan_numb >= ppmChannelCount){
-      cur_chan_numb = 0;
-      calc_rest = calc_rest + PPM_PulseLen;
-      OCR1A = (PPM_FrLen - calc_rest) * 2;
-      calc_rest = 0;
+  noInterrupts();                       //Turn off interrupts so that SBUS_ISR does not run while a value is being updated
+  for (uint8_t x = 0; x < 11; x++) {
+    if (adjustedValue & 0x0001) {
+      sbusPacket[byteIndex] |= _BV(bitIndex);
+    } else {
+      sbusPacket[byteIndex] &= ~_BV(bitIndex);      
     }
-    else{
-      int16_t ppmValue = constrain(ppmValueArray[cur_chan_numb],CHANNEL_MIN_VALUE,CHANNEL_MAX_VALUE);
-      OCR1A = (ppmValue - PPM_PulseLen) * 2;
-      calc_rest = calc_rest + ppmValue;
-      cur_chan_numb++;
-    }     
+    adjustedValue >>=  1; 
+    if (bitIndex == 0) {
+      bitIndex = 7;
+      byteIndex++;
+    } else{
+      bitIndex--;      
+    }    
   }
+  interrupts();
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+void sbusSetFailsafe(bool value) {
+  noInterrupts();                       //Turn off interrupts so that SBUS_ISR does not run while a value is being updated
+  if (value) {
+    sbusPacket[SBUS_FLAG_BYTE] |= SBUS_FAILSAFE_MASK;
+  } else {
+    sbusPacket[SBUS_FLAG_BYTE] &= ~SBUS_FAILSAFE_MASK;    
+  }
+  interrupts();
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+void sbusSetFrameLost(bool value) {
+  noInterrupts();                       //Turn off interrupts so that SBUS_ISR does not run while a value is being updated
+  if (value) {
+    sbusPacket[SBUS_FLAG_BYTE] |= SBUS_FRAME_LOST_MASK;
+  } else {
+    sbusPacket[SBUS_FLAG_BYTE] &= ~SBUS_FRAME_LOST_MASK;    
+  }
+  interrupts();
+}
+
+//------------------------------------------------------------------------------------------------------------------------
+void SBUS_ISR() {  
+  // Copy the sbusPacket to the serial output buffer and send it (8E2 at 100000 baud 
+
 }
 

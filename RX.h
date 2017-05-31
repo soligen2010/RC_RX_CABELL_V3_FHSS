@@ -100,6 +100,7 @@ typedef struct {
 void setupReciever();
 void outputSumPPM();
 void outputPWM();
+void outputSbus();
 bool getPacket();
 void outputFailSafeValues(bool callOutputChannels);
 void outputChannels();
