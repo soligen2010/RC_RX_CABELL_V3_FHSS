@@ -1,6 +1,8 @@
 //
 // Copied from Arduino Servo library and changed to not use the interrupt 1 vector
-// Instead in Interupt 1 routine call interruptOneProcessing()
+// Instead in Interupt 1 routine call interruptOneProcessing().
+// Also tweaked writeMicroseconds to only disable interrupts and change the ticks 
+// value if the value has actually changed.
 //
 
 /*
@@ -290,10 +292,12 @@ void MyServo::writeMicroseconds(int value)
     value = value - TRIM_DURATION;
     value = usToTicks(value);  // convert to ticks after compensating for interrupt overhead - 12 Aug 2009
 
-    uint8_t oldSREG = SREG;
-    cli();
-    servos[channel].ticks = value;
-    SREG = oldSREG;
+    if (servos[channel].ticks != value) {     // Avoid disabling interrupts if the value hasn't changed
+      uint8_t oldSREG = SREG;
+      cli();
+      servos[channel].ticks = value;
+      SREG = oldSREG;
+    }
   }
 }
 
