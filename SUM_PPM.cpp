@@ -88,7 +88,11 @@ void ppmDisable(){
 
 //------------------------------------------------------------------------------------------------------------------------
 void setPPMOutputChannelValue(uint8_t channel, int value) {
-  ppmValueArray[channel] = value;
+  if (ppmValueArray[channel] != value) {
+    noInterrupts();
+    ppmValueArray[channel] = value;
+    interrupts();
+  }
 }
 
 //------------------------------------------------------------------------------------------------------------------------
