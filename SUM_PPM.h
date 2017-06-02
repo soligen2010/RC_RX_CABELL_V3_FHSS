@@ -24,10 +24,33 @@
 #ifndef __have__SUM_PPM_h__
 #define __have__SUM_PPM_h__
 
+#include "pins.h"
+
+////////////////////// CONFIGURATION ///////////////////////////////
+#define PPM_FrLen             22500                      //set the PPM frame length in microseconds (1ms = 1000µs)
+#define PPM_MaxChannels       8                          //The maximum number of channels that can be sent in a frame
+#define PPM_PulseLen_us       300                        //set the pulse length
+#define onState               1                          //set polarity of the pulses: 1 is positive, 0 is negative
+#define TICKS_PER_US          2                          //based on timer settings, the number of ticks per microsecond
+///////////////////// CALIBRATION //////////////////////////////////
+#define MICROSECOND_RANGE_EXPANSION       .02            // If the low to high range is not 1000, then adjust this to get the difference to 1000
+#define MICROSECOND_RANGE_OFFSET          -2             // If the output range is not centered at 1500, use this to offset.  Adjust after MICROSECOND_RANGE_EXPANSION
+////////////////////////////////////////////////////////////////////
+#define PPM_PulseLen_ticks  (PPM_PulseLen_us * TICKS_PER_US)      //set the pulse length
+#define PPM_FrLen_ticks     (PPM_FrLen * TICKS_PER_US)            //set the PPM frame length in microseconds (1ms = 1000µs)
+
+#if onState == 1
+  #define  PPM_PIN_ON  PPM_OUTPUT_SET_HIGH
+  #define  PPM_PIN_OFF PPM_OUTPUT_SET_LOW
+#else
+  #define  PPM_PIN_ON  PPM_OUTPUT_SET_LOW
+  #define  PPM_PIN_OFF PPM_OUTPUT_SET_HIGH
+#endif
+
 void ppmSetup(uint8_t pin, uint8_t channelCount);
 void ppmDisable();
 bool PPMEnabled();
-void setPPMOutputChannelValue(uint8_t channel, int value);
+void setPPMOutputChannelValue(uint8_t channel, uint16_t value);
 void SUM_PPM_ISR();
 
 #endif

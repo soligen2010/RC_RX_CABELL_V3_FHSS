@@ -105,6 +105,9 @@ void detachServoPins() {
 
 //--------------------------------------------------------------------------------------------------------------------------
 void setupReciever() {  
+
+  pinMode (PPM_OUTPUT_PIN,INPUT_PULLUP);   // Set this pin mode on PPM pin to keep PPM from floating until the output mode is recieved.  A 10k pullup resistor is better as the pin floatys until this line runs
+  
   uint8_t softRebindFlag;
 
   EEPROM.get(softRebindFlagEEPROMAddress,softRebindFlag);
@@ -390,7 +393,7 @@ void outputPWM() {
 //--------------------------------------------------------------------------------------------------------------------------
 void outputSumPPM() {  // output as AETR
   int adjusted_x;
-  for(int x = 0; x < min(RX_NUM_CHANNELS,CABELL_NUM_CHANNELS) ; x++) {  // 
+  for(uint8_t x = 0; x < min(RX_NUM_CHANNELS,CABELL_NUM_CHANNELS) ; x++) {  // 
 
     //set adjusted_x to be in AETR order
     switch (x)
@@ -412,8 +415,9 @@ void outputSumPPM() {  // output as AETR
     }
     
     setPPMOutputChannelValue(x, channelValues[adjusted_x]);
-  //  Serial.print(channelValues[x]); Serial.print("\t"); 
+    //Serial.print(channelValues[x]); Serial.print("\t"); 
   } 
+  //Serial.println();
 }
 
 //--------------------------------------------------------------------------------------------------------------------------

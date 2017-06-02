@@ -278,7 +278,7 @@ void MyServo::write(int value)
   this->writeMicroseconds(value);
 }
 
-void MyServo::writeMicroseconds(int value)
+void MyServo::writeMicroseconds(unsigned int value)
 {
   // calculate and store the values for the given channel
   byte channel = this->servoIndex;

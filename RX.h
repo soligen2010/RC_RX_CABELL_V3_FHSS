@@ -76,7 +76,7 @@ typedef struct {
          normal                 = 0,
          bind                   = 1,
          setFailSafe            = 2,
-         normalWithTelemetry    = 3,   // Experimental.  1 Mbps
+         normalWithTelemetry    = 3,   
          telemetryResponse      = 4,
          unBind                 = 127
    } RxMode;

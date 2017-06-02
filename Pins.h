@@ -46,6 +46,17 @@
 #define AUX4_PIN                  9    
 
 #define PPM_OUTPUT_PIN            2
+#define PPM_OUTPUT_PIN_bit        2           //2 = PD2
+#define PPM_OUTPUT_port           PORTD
+#define PPM_OUTPUT_ipr            PIND
+#define PPM_OUTPUT_ddr            DDRD
+#define PPM_OUTPUT_PIN_MASK       _BV(PPM_OUTPUT_PIN_bit)
+#define PPM_OUTPUT_SET_INPUT      PPM_OUTPUT_ddr &= ~PPM_OUTPUT_PIN_MASK
+#define PPM_OUTPUT_SET_OUTPUT     PPM_OUTPUT_ddr |=  PPM_OUTPUT_PIN_MASK
+#define PPM_OUTPUT_SET_PULLUP     PPM_OUTPUT_port |= PPM_OUTPUT_PIN_MASK
+#define PPM_OUTPUT_SET_HIGH       PPM_OUTPUT_port |= PPM_OUTPUT_PIN_MASK
+#define PPM_OUTPUT_SET_LOW        PPM_OUTPUT_port &= ~PPM_OUTPUT_PIN_MASK
+
 #define BIND_BUTTON_PIN           A3
 #define LED_PIN                   A1
 

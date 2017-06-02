@@ -32,25 +32,15 @@
 #include "Arduino.h"
 #include "SUM_PPM.h"
 
-volatile uint8_t ppmPin = 0xFF;  // initialized to invalid pin
+uint8_t ppmPin = 0xFF;  // initialized to invalid pin
 volatile int16_t ppmValueArray [CABELL_NUM_CHANNELS]; 
-volatile uint8_t ppmChannelCount; 
+uint8_t ppmChannelCount; 
 bool ppmEnabled = false;
 
 
 //------------------------------------------------------------------------------------------------------------------------
 void ppmSetup(uint8_t pin, uint8_t channelCount){  
-  //this program will put out a PPM signal
-
-  // from: https://code.google.com/archive/p/generate-ppm-signal/
   
-  //////////////////////CONFIGURATION///////////////////////////////
-  #define PPM_FrLen 22500  //set the PPM frame length in microseconds (1ms = 1000µs)
-  #define PPM_MaxChannels 8  //The maximum number of channels that can be sent in a frame
-  #define PPM_PulseLen 300  //set the pulse length
-  #define onState 1  //set polarity of the pulses: 1 is positive, 0 is negative
-  //////////////////////////////////////////////////////////////////
-
   ppmPin = pin;
   ppmChannelCount = min(PPM_MaxChannels,channelCount);
   
@@ -87,7 +77,9 @@ void ppmDisable(){
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-void setPPMOutputChannelValue(uint8_t channel, int value) {
+void setPPMOutputChannelValue(uint8_t channel, uint16_t value) {
+  uint16_t correction = MICROSECOND_RANGE_OFFSET + (uint16_t)((float)value * MICROSECOND_RANGE_EXPANSION) ;
+  value = (constrain(value,CHANNEL_MIN_VALUE,CHANNEL_MAX_VALUE) + correction - PPM_PulseLen_us) * TICKS_PER_US;
   if (ppmValueArray[channel] != value) {
     noInterrupts();
     ppmValueArray[channel] = value;
@@ -102,27 +94,27 @@ void SUM_PPM_ISR() {
   static unsigned int calc_rest = 0;
   
   if(state) {  //start pulse
-    digitalWrite(ppmPin, onState);
-    OCR1A = PPM_PulseLen * 2;
+    PPM_PIN_ON;
+    //digitalWrite(ppmPin, onState);
+    OCR1A = PPM_PulseLen_ticks;
     state = false;
   }
   else{  //end pulse and calculate when to start the next pulse
-  
-    digitalWrite(ppmPin, !onState);
-    state = true;
+    PPM_PIN_OFF;
+    //digitalWrite(ppmPin, !onState);
 
     if(cur_chan_numb >= ppmChannelCount){
+      calc_rest = calc_rest + PPM_PulseLen_ticks;
+      OCR1A = (PPM_FrLen_ticks - calc_rest);
       cur_chan_numb = 0;
-      calc_rest = calc_rest + PPM_PulseLen;
-      OCR1A = (PPM_FrLen - calc_rest) * 2;
       calc_rest = 0;
-    }
-    else{
-      int16_t ppmValue = constrain(ppmValueArray[cur_chan_numb],CHANNEL_MIN_VALUE,CHANNEL_MAX_VALUE);
-      OCR1A = (ppmValue - PPM_PulseLen) * 2;
-      calc_rest = calc_rest + ppmValue;
+    } else {
+      int16_t ppmValue = ppmValueArray[cur_chan_numb];          //Copy out of voltatile storage since it is used more than once
+      OCR1A = ppmValue;
+      calc_rest = calc_rest + ppmValue + PPM_PulseLen_ticks;
       cur_chan_numb++;
     }     
+    state = true;
   }
 }
 
