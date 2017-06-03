@@ -37,19 +37,25 @@ volatile uint8_t sbusPacket[25];
 
 //------------------------------------------------------------------------------------------------------------------------
 void sbusSetup(){  
+  Serial.begin(100000,SERIAL_8E2);  
+  
   noInterrupts();
+  
   TCCR1A = 0; // set entire TCCR1 register to 0
   TCCR1B = 0;
   
-  OCR1A = 100;  // compare match register, change this
+  OCR1A = SBUS_PACKET_RATE * 2000;  // compare match register. at prescalar 8 and 16 Mhz 14000 is 7 ms.  This defines the SBUS packet rate
   TCCR1B |= (1 << WGM12);  // turn on CTC mode
   TCCR1B |= (1 << CS11);  // 8 prescaler: 0,5 microseconds at 16mhz
   TIMSK1 |= (1 << OCIE1A); // enable timer compare interrupt
+  
   sbusPacket[SBUS_START_BYTE] = 0xF0;
   sbusPacket[SBUS_FLAG_BYTE]  = 0x00;
   sbusPacket[SBUS_END_BYTE]   = 0x00;
-  sbusEnabledFlag = true;
+  
   interrupts();
+  
+  sbusEnabledFlag = true;
 }
 
 bool sbusEnabled() {
@@ -59,20 +65,24 @@ bool sbusEnabled() {
 //------------------------------------------------------------------------------------------------------------------------
 void sbusDisable(){    
   noInterrupts();
+  
   TCCR1A = 0; // set entire TCCR1 register to 0
   TCCR1B = 0;
   TIMSK1 &= ~(1<<OCIE1A);   // Disable Interrupt Counter 1, output compare A (TIMER1_CMPA_vect)
+  
   interrupts();
+  
   sbusEnabledFlag = false;
+  Serial.begin(74880);
 }
 
 //------------------------------------------------------------------------------------------------------------------------
-void setSbusOutputChannelValue(uint8_t channel, int value) {
+void setSbusOutputChannelValue(uint8_t channel, uint16_t value) {
 
   uint8_t firstBit = 8 + (constrain(channel,0,15) * 11);  // Start byte plus 11 bits per channel. 16 channels
   uint8_t byteIndex = firstBit / 8;
   uint8_t bitIndex = 7 - (firstBit % 8);
-  uint16_t adjustedValue = value - 477;
+  uint16_t adjustedValue = value - 476;
 
   noInterrupts();                       //Turn off interrupts so that SBUS_ISR does not run while a value is being updated
   for (uint8_t x = 0; x < 11; x++) {
@@ -118,5 +128,10 @@ void sbusSetFrameLost(bool value) {
 void SBUS_ISR() {  
   // Copy the sbusPacket to the serial output buffer and send it (8E2 at 100000 baud 
 
+  uint8_t outBuf[25];
+  for (uint8_t x = 0; x < sizeof(outBuf); x++) {   // code loop instead of using memcpy because sbusPacket is volatile
+    outBuf[x] = sbusPacket[x];
+  }
+  Serial.write(&outBuf[0],sizeof(outBuf));
 }
 

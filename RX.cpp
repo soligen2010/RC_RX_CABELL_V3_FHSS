@@ -423,7 +423,7 @@ void outputSumPPM() {  // output as AETR
 //--------------------------------------------------------------------------------------------------------------------------
 void outputSbus() {  // output as AETR
   int adjusted_x;
-  for(int x = 0; x < CABELL_NUM_CHANNELS ; x++) {  // 
+  for(uint8_t x = 0; x < CABELL_NUM_CHANNELS ; x++) {  // 
 
     //set adjusted_x to be in AETR order
     switch (x)

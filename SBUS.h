@@ -24,6 +24,8 @@
 #ifndef __have__SBUS_h__
 #define __have__SBUS_h__
 
+#define SBUS_PACKET_RATE  7   // How often to send a packet in milliseconds.  7 is high speed mode.  14 is analog mode
+
 #define SBUS_START_BYTE  0
 #define SBUS_END_BYTE    24
 #define SBUS_FLAG_BYTE   23
@@ -34,7 +36,7 @@
 void sbusSetup();
 void sbusDisable();
 bool sbusEnabled();
-void setSbusOutputChannelValue(uint8_t channel, int value);
+void setSbusOutputChannelValue(uint8_t channel, uint16_t value);
 void SBUS_ISR();
 void sbusSetFailsafe(bool value);
 void sbusSetFrameLost(bool value);
