@@ -40,10 +40,13 @@
 #define CABELL_RADIO_CHANNELS         9                   // This is 1/5 of the total number of radio channels used for FHSS
 #define CABELL_RADIO_MIN_CHANNEL_NUM  3                   // Channel 0 is right on the boarder of allowed frequency range, so move up to avoid bleeding over
 
+#define CABELL_OPTION_MASK_MAX_POWER_OVERRIDE    0x40
 #define CABELL_OPTION_MASK_CHANNEL_REDUCTION     0x0F
 #define CABELL_OPTION_MASK_RECIEVER_OUTPUT_MODE  0x30
 #define CABELL_OPTION_SHIFT_RECIEVER_OUTPUT_MODE 4
-#define CABELL_OPTION_MASK_MAX_POWER_OVERRIDE    0x40
+#define CABELL_RECIEVER_OUTPUT_PWM               0
+#define CABELL_RECIEVER_OUTPUT_PPM               1
+#define CABELL_RECIEVER_OUTPUT_SBUS              2
 
 #define CHANNEL_MIN_VALUE         1000
 #define CHANNEL_MAX_VALUE         2000
