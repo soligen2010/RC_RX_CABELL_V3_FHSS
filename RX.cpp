@@ -287,7 +287,9 @@ void setNextRadioChannel(bool missedPacket) {
     swapRecievers();
    }
 
- primaryReciever->write_register(NRF_CONFIG,radioConfigRegisterForRX_IRQ_On);  // Turn on RX interrupt
+  packetReady = false;
+  primaryReciever->write_register(NRF_CONFIG,radioConfigRegisterForRX_IRQ_On);  // Turn on RX interrupt
+ 
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -296,6 +298,9 @@ bool getPacket() {
   static bool inititalGoodPacketRecieved = false;
   static unsigned long nextAutomaticChannelSwitch = micros() + RESYNC_WAIT_MICROS;
   static unsigned long lastRadioPacketeRecievedTime = 0;
+  static bool hoppingLockedIn = false;
+  static uint16_t sequentialHitCount = 0;
+  static uint16_t sequentialMissCount = 0;
   bool goodPacket_rx = false;
   
   // Wait for the radio to get a packet, or the timeout for the current radio channel occurs
@@ -312,11 +317,13 @@ bool getPacket() {
         #endif
       } else {
         packetMissed = true;
+        sequentialHitCount = 0;
+        sequentialMissCount++;
         rssi.miss();
         #ifdef TEST_HARNESS
            testOut.miss();
         #endif
-        setNextRadioChannel(true);       //true indicated that packet was missed         
+        setNextRadioChannel(true);       //true indicates that packet was missed         
         if ((long)(nextAutomaticChannelSwitch - lastRadioPacketeRecievedTime) > ((long)RESYNC_TIME_OUT)) {  // if a long time passed, increase timeout duration to re-sync with the TX
           telemetryEnabled = false;
           #ifdef TEST_HARNESS
@@ -326,6 +333,9 @@ bool getPacket() {
               Serial.println(F("Re-sync Attempt"));
             }
           #endif
+          hoppingLockedIn = false;
+          sequentialHitCount = 0;
+          sequentialMissCount = 0;
           packetInterval = DEFAULT_PACKET_INTERVAL;
           initialTelemetrySkipPackets = 0;
           nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
@@ -339,8 +349,9 @@ bool getPacket() {
     lastRadioPacketeRecievedTime = micros();   //Use this time to calculate the next expected packet so when we miss packets we can change channels
     goodPacket_rx = readAndProcessPacket();
     nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + packetInterval + INITIAL_PACKET_TIMEOUT_ADD; 
-    packetReady = false;
     if (goodPacket_rx) {
+      sequentialHitCount++;
+      sequentialMissCount = 0;
       inititalGoodPacketRecieved = true;
       lastPacketTime = micros();
       failSafeDisplayFlag = true;
@@ -350,11 +361,32 @@ bool getPacket() {
         testOut.hit();
       #endif
     } else {
+      sequentialMissCount++;
       rssi.badPacket();
       packetMissed = true;
       #ifdef TEST_HARNESS
         testOut.badPacket();
       #endif
+    }
+  }
+
+  // This seems to only happen when the TX is close to the RX as the strong signal swamps the RX module.
+  
+  if (!hoppingLockedIn) {
+    if (sequentialHitCount > 5) {
+      hoppingLockedIn = true;
+      //if (currentOutputMode != CABELL_RECIEVER_OUTPUT_SBUS) {
+        Serial.println(F("Signal Locked"));
+      //}
+    }
+    if (sequentialMissCount > 5) {
+      //if this happens then there is a bad lock and we should try to sync again.
+      lastRadioPacketeRecievedTime = millis() - (long)RESYNC_TIME_OUT;
+      nextAutomaticChannelSwitch = millis() + RESYNC_WAIT_MICROS;
+      telemetryEnabled = false;
+      setNextRadioChannel(true);   //Getting the next channel ensures radios are flushed and properly waiting for a packet
+      //if (currentOutputMode != CABELL_RECIEVER_OUTPUT_SBUS) {
+      //}
     }
   }
   return goodPacket_rx;

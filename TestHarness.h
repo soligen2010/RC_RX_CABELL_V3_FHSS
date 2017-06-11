@@ -39,8 +39,8 @@
 // This is useful for testing NRF24L01 modules for range/reliability
 // and for testing antennas.
 
-#define TEST_HARNESS
-#define USE_I2C_LCD
+//#define TEST_HARNESS
+//#define USE_I2C_LCD
 
 // For I2C LCD the pins for the I2C packback port extended need to be specified along with the I2C address
 // There are various version on the market, so these may need to be changed which version is being used
