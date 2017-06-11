@@ -120,7 +120,6 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
 void setFailSafeDefaultValues();
 void loadFailSafeDefaultValues();
 void setFailSafeValues(uint16_t newFailsafeValues[]);
-void setNewDataRate();
 unsigned long  sendTelemetryPacket();    //returns micros of when the transmit is esspected to be complete
 uint8_t calculateRSSI(bool goodPacket);
 void ADC_Processing();

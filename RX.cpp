@@ -63,7 +63,6 @@ bool throttleArmed = true;
 bool bindMode = false;     // when true send bind command to cause reciever to bind enter bind mode
 bool failSafeDisplayFlag = true;
 bool packetMissed = false;
-bool fastDataRate = true;
 uint32_t packetInterval = DEFAULT_PACKET_INTERVAL;
 
 uint8_t radioChannel[CABELL_RADIO_CHANNELS];
@@ -163,7 +162,6 @@ void setupReciever() {
   initializeRadio(primaryReciever);
   initializeRadio(secondaryReciever);
 
-  setNewDataRate();
   setTelemetryPowerMode(CABELL_OPTION_MASK_MAX_POWER_OVERRIDE);
   
   primaryReciever->flush_rx();
@@ -173,18 +171,21 @@ void setupReciever() {
   outputFailSafeValues(false);   // initialize default values for output channels
   
   Serial.print(F("Radio ID: "));Serial.print((uint32_t)(radioPipeID>>32)); Serial.print(F("    "));Serial.println((uint32_t)((radioPipeID<<32)>>32));
-  Serial.print(F("Current Model Number: "));Serial.println(currentModel);
   
+  Serial.print(F("Current Model Number: "));Serial.println(currentModel);
+  #ifdef TEST_HARNESS
+    testOut.init();
+    Serial.println(F("Operating as a test harness.  Output disabled."));
+  #endif
+
+ setNextRadioChannel(true);
+ 
  //setup pin change interrupt
   cli();    // switch interrupts off while messing with their settings  
   PCICR =0x02;          // Enable PCINT1 interrupt
   PCMSK1 = RADIO_IRQ_PIN_MASK;
   sei();
 
-  #ifdef TEST_HARNESS
-    testOut.init();
-    Serial.println(F("Operating as a test harness.  Output disabled."));
-  #endif
 
 }
 
@@ -262,7 +263,7 @@ void setNextRadioChannel(bool missedPacket) {
   
   currentChannel = getNextChannel (radioChannel, CABELL_RADIO_CHANNELS, currentChannel);
   
-  if (telemetryEnabled && expectedTransmitCompleteTime != 0) {
+  if (expectedTransmitCompleteTime != 0) {
    // Wait here for the telemetry packet to finsish transmitting
    long waitTimeLeft = (long)(expectedTransmitCompleteTime - micros());
    if (waitTimeLeft > 0) {
@@ -328,7 +329,6 @@ bool getPacket() {
           packetInterval = DEFAULT_PACKET_INTERVAL;
           initialTelemetrySkipPackets = 0;
           nextAutomaticChannelSwitch += RESYNC_WAIT_MICROS;
-          setNewDataRate();                       //Alternate data rates until signal found
         } else {
           nextAutomaticChannelSwitch += packetInterval;
         }
@@ -745,24 +745,6 @@ bool decodeChannelValues(CABELL_RxTxPacket_t const& RxPacket, uint8_t channelsRe
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-void setNewDataRate() {
-
-  fastDataRate = !fastDataRate;
-
-  if (fastDataRate) {
-    primaryReciever->setDataRate(RF24_1MBPS);
-    secondaryReciever->setDataRate(RF24_1MBPS);
-  } else {
-    primaryReciever->setDataRate(RF24_250KBPS );
-    secondaryReciever->setDataRate(RF24_250KBPS );
-  }
-  //setDataRate changes txDelay so reset it here  
-  primaryReciever->txDelay = 0;         // Timing works out so a delay is not needed
-  secondaryReciever->txDelay = 0;       
-
-}
-
-//--------------------------------------------------------------------------------------------------------------------------
 unsigned long sendTelemetryPacket() {
 
   static int8_t packetCounter = 0;  // this is only used for toggleing bit
@@ -781,14 +763,10 @@ unsigned long sendTelemetryPacket() {
       // calculate transmit time based on packet size and data rate of 1MB per sec
       // This is done becasue polling the status register during xmit to see when xmit is done casued issues sometimes.
       // bits = packstsize * 8  +  73 bits overhead
-      // at 1 MB per sec, one bit is 1 uS
+      // at 250 kbps per sec, one bit is 4 uS
       // then add 140 uS which is 130 uS to begin the xmit and 10 uS fudge factor
       // Add this to micros() to return when the transmit is esspected to be complete
-      if (fastDataRate) {
-        return micros() + (((unsigned long)packetSize * 8ul)  +  73ul + 140ul)   ;
-      } else {
-        return micros() + (((((unsigned long)packetSize * 8ul)  +  73ul) * 4ul) + 140ul)   ;  //250Kbps takes 4 times longer to xmit
-      }
+      return micros() + (((((unsigned long)packetSize * 8ul)  +  73ul) * 4ul) + 140ul) ;  
 }
 
 
@@ -853,12 +831,14 @@ void setTelemetryPowerMode(uint8_t option) {
 void initializeRadio(My_RF24* radioPointer) {
   radioPointer->maskIRQ(true,true,true);         // Mask all interrupts.  RX interrupt (the only one we use) gets turned on after channel change
   radioPointer->enableDynamicPayloads();
+  radioPointer->setDataRate(RF24_250KBPS );
   radioPointer->setChannel(0);                    // start out on a channel we dont use so we dont start recieving packets yet.  It will get changed when the looping starts
   radioPointer->setAutoAck(0);
   radioPointer->openWritingPipe(~radioPipeID);   // Invert bits for writing pipe so that telemetry packets transmit with a different pipe ID.
   radioPointer->openReadingPipe(1,radioPipeID);
   radioPointer->startListening();
   radioPointer->csDelay = 0;         //Can be reduced to 0 beacase we use interrupts and timing instead of polling through SPI
+  radioPointer->txDelay = 0;         // Timing works out so a delay is not needed
 
   //Stop listening to set up module for writing then take a copy of the config register so we can change to write mode more quickly when sending telemetry packets
   radioPointer->stopListening();
