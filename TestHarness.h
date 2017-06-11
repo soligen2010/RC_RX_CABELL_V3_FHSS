@@ -28,19 +28,38 @@
 #define __have__TEST_HARNESS_h__
 
 //----------------------------------------------------------------------------------
-// Un-comment the line below to compile as a test harness.  In this mode
-// there is no servo ouput.  Instead statistics are displayed on a 16x2 LCD.
-// This is useful for testing NRF24L01 modules for range/reliability
-// and for testing antennas.
-
-//#define TEST_HARNESS
-
 // The LCD displays 6 numbers.
 //
 // Line 1:  Packet success rate (percent); Number of missed packets in a row; The number of time the secondary reciever recovers a packet the primary reciever missed
 //
 // Line 2:  The number of good packets recieved; The number of missed or bad packets; The number of packets recieved with strengh below -64db
 //
+// Un-comment the line below to compile as a test harness.  In this mode
+// there is no servo ouput.  Instead statistics are displayed on a 16x2 LCD.
+// This is useful for testing NRF24L01 modules for range/reliability
+// and for testing antennas.
+
+#define TEST_HARNESS
+#define USE_I2C_LCD
+
+// For I2C LCD the pins for the I2C packback port extended need to be specified along with the I2C address
+// There are various version on the market, so these may need to be changed which version is being used
+// some version are documented at https://arduino-info.wikispaces.com/LCD-Blue-I2C
+// I2C requires the NewLiquidCrystal library to be installed.  Get it at https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads/
+#ifdef USE_I2C_LCD
+  #define LCD_I2C_ADDR     0x3F
+  //#define LCD_I2C_ADDR     0x27
+  #define I2C_EN_PIN              2
+  #define I2C_RW_PIN              1
+  #define I2C_RS_PIN              0
+  #define I2C_D4_PIN              4
+  #define I2C_D5_PIN              5
+  #define I2C_D6_PIN              6
+  #define I2C_D7_PIN              7
+  #define I2C_BL_PIN              3   //Backlight
+  #define I2C_BACKLIGHT_POLARITY  POSITIVE
+#endif
+
 //----------------------------------------------------------------------------------
 
 #ifdef TEST_HARNESS

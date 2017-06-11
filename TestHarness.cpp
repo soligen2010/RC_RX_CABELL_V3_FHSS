@@ -29,8 +29,24 @@
 
 #ifdef TEST_HARNESS
 
-#include <LiquidCrystal.h>
 #include "Arduino.h"
+
+#ifdef USE_I2C_LCD
+  #include <LiquidCrystal_I2C.h>
+
+  LiquidCrystal_I2C lcd(LCD_I2C_ADDR,   // Set the LCD I2C address
+                        I2C_EN_PIN,
+                        I2C_RW_PIN,
+                        I2C_RS_PIN,
+                        I2C_D4_PIN,
+                        I2C_D5_PIN,
+                        I2C_D6_PIN,
+                        I2C_D7_PIN,
+                        I2C_BL_PIN,
+                        I2C_BACKLIGHT_POLARITY);  
+
+#else
+  #include <LiquidCrystal.h>
 
   LiquidCrystal lcd(    RS_PIN,
                         EN_PIN,                      
@@ -38,6 +54,7 @@
                         D5_PIN,
                         D6_PIN,
                         D7_PIN);  
+#endif
                         
 //--------------------------------------------------------------------------------------------------------------------------
 TestHarness::TestHarness ()
@@ -146,30 +163,22 @@ void TestHarness::resetCounters() {
 
 //--------------------------------------------------------------------------------------------------------------------------
 void TestHarness::display(int LCD_Command) {
-  // updateing the lcd is slow, so change display gradually
+  // updateing the lcd is slow, so change display gradually, one character at a time
 
-  if ( LCD_Command  == 1)  lcd.setCursor(0, 0);
-  if ( LCD_Command  == 3)  lcd.print("       ");
-  if ( LCD_Command  == 5)  lcd.setCursor(0, 0);
-  if ( LCD_Command  == 7)  lcd.print(displayPacketRate,1);
-  if ( LCD_Command  == 9)  lcd.setCursor(7, 0);
-  if ( LCD_Command  == 11)  lcd.print("     ");
-  if ( LCD_Command  == 13)  lcd.setCursor(7, 0);
-  if ( LCD_Command  == 15)  lcd.print(displaySequentialMissCount);
-  if ( LCD_Command  == 17)  lcd.setCursor(0, 1);
-  if ( LCD_Command  == 19)  lcd.print("       ");
-  if ( LCD_Command  == 21)  lcd.setCursor(0, 1);
-  if ( LCD_Command  == 23)  lcd.print(displayHitCount);
-  if ( LCD_Command  == 25)  lcd.setCursor(7, 1);
-  if ( LCD_Command  == 27)  lcd.print("      ");
-  if ( LCD_Command  == 29)  lcd.setCursor(7, 1);
-  if ( LCD_Command  == 31)  lcd.print(displayMissCount);
-  if ( LCD_Command  == 41)  lcd.setCursor(12, 0);
-  if ( LCD_Command  == 43)  lcd.print("    ");
-  if ( LCD_Command  == 45)  lcd.setCursor(12, 0);
-  if ( LCD_Command  == 47)  lcd.print(displaySecondaryHitCount);
+static char line[18];
 
-  firstDisplay = true;
+if ( LCD_Command  == 1)  sprintf(line,"%-7i%-4i%5i",(int)displayPacketRate,displaySequentialMissCount,displaySecondaryHitCount);
+
+if ( LCD_Command  == 3)  lcd.setCursor(0, 0);
+if ( LCD_Command  >= 5  && LCD_Command < 5+16)  lcd.write(line[LCD_Command-5]);
+
+
+if ( LCD_Command  == 22)  sprintf(line,"%-7i%-9i",displayHitCount,displayMissCount);
+
+if ( LCD_Command  == 24)  lcd.setCursor(0, 1);
+if ( LCD_Command  >= 26 && LCD_Command < 26+16)  lcd.write(line[LCD_Command-26]);
+
+firstDisplay = true;
 }
 
 
