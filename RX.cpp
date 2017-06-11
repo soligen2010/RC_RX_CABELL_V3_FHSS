@@ -370,7 +370,12 @@ bool getPacket() {
     }
   }
 
+  // Below tries to detect when a false lock occurs and force a re-sync when detected in order to get a good lock.
+  // This happens when while syncing the NRF24L01 successfully receives a packet on an adjacent channel to the current channel,
+  // which locks the algorithm into the wrong place in the channel progression.  If the module continues to occasionally receive a 
+  // packet like this, a re-sync does not happen, but the packet success rate is very poor.  This maifests as studdering control surfaces.
   // This seems to only happen when the TX is close to the RX as the strong signal swamps the RX module.
+  // Checking for 5 good packets in a row to confirm lock, or 5 misses to force re-sync.
   
   if (!hoppingLockedIn) {
     if (sequentialHitCount > 5) {
@@ -386,6 +391,7 @@ bool getPacket() {
       telemetryEnabled = false;
       setNextRadioChannel(true);   //Getting the next channel ensures radios are flushed and properly waiting for a packet
       //if (currentOutputMode != CABELL_RECIEVER_OUTPUT_SBUS) {
+        Serial.println(F("False Signal Lock"));
       //}
     }
   }
