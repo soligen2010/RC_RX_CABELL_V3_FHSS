@@ -301,6 +301,7 @@ bool getPacket() {
   static bool hoppingLockedIn = false;
   static uint16_t sequentialHitCount = 0;
   static uint16_t sequentialMissCount = 0;
+  static bool secondaryRecieverUsed = false;
   bool goodPacket_rx = false;
   
   // Wait for the radio to get a packet, or the timeout for the current radio channel occurs
@@ -310,6 +311,7 @@ bool getPacket() {
         // missed packet but secondary radio has it so swap radios and signal packet ready
         //packet will be picked up on next loop through
         packetReady = true;
+        secondaryRecieverUsed = true;
         swapRecievers();
         rssi.secondaryHit();
         #ifdef TEST_HARNESS
@@ -346,9 +348,16 @@ bool getPacket() {
       }
     }
   } else {
-    lastRadioPacketeRecievedTime = micros();   //Use this time to calculate the next expected packet so when we miss packets we can change channels
+    if (secondaryRecieverUsed) {
+      // If the seconday reciever is used, then the packet was actually recieved some time ago, so don't uses micros(). 
+      // Do this to prevent the timing from drifing if there are multiple packets in a row only recieved by the secondary reciever.
+      lastRadioPacketeRecievedTime = nextAutomaticChannelSwitch - INITIAL_PACKET_TIMEOUT_ADD; //Can't log the actual recieved time when primary missed packet, so assume it came in when expected
+    } else {
+      lastRadioPacketeRecievedTime = micros();   //Use this time to calculate the next expected packet so when we miss packets we can change channels
+    }
     goodPacket_rx = readAndProcessPacket();
     nextAutomaticChannelSwitch = lastRadioPacketeRecievedTime + packetInterval + INITIAL_PACKET_TIMEOUT_ADD; 
+    secondaryRecieverUsed = false;
     if (goodPacket_rx) {
       sequentialHitCount++;
       sequentialMissCount = 0;
