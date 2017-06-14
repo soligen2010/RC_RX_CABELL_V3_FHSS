@@ -15,7 +15,7 @@ The CABELL_V3 protocol can be configured to send between 4 and 16 RC channels, h
 
 I recommend reducing the number of channels as much as possible based on what your model requires.  Fewer channels will use a smaller packet size, which improves transmission reliability (fewer bytes sent means less opportunity for errors).
 
-The protocol also assigns each model a different number so one model setting does not control the wrong model.  The protocol can distinguish up to 255 different models, but be aware that the multiprotocol transmitter software only does 16.
+The protocol also assigns each model a different number so one model setting does not control the wrong model.  The protocol can distinguish up to 255 different models, but be aware that the Multiprotocol transmitter software only does 16.
 
 ## Hardware
 A 5V 16Mhz Arduino Pro Mini and one or 2 NRF24L01+ modules are needed for this receiver.  Be sure to get the version of a Pro Mini that has pins A4 and A5 broken out (and A6, A7 too for telemetry analog inputs).  The hardware folder contains a schematic and a PCB layout using a single transceiver module for PWN or PPM output; however, this version of the PCB has not been tested.  I am still using the previous version of the PCB and modifying it to implement the changes included in the new version. If anyone tries this PCB version, please open an issue let me know how it works. 
@@ -58,13 +58,13 @@ The output method is controlled via the option byte in the protocol header.  See
 * SBUS (__Experimental__) output on the TX pin through an inverter.  The channel sequence is AETR, more specifically Roll, Pitch, Throttle, Yaw, AUX1, AUX2, AUX3, AUX4, AUX5, AUX6, AUX7, AUX8, AUX9, AUX10, AUX11, AUX12.  SBUS packets are output every 7 milliseconds.
 
 ## Receiver Setup
-The receiver must be bound to the transmitter. There are several ways for the receiver to enter Bind Mode:
+The receiver must be bound to the transmitter. There are several ways for the receiver to enter Bind Mode.  When a receiver is in bind mode the LED will be on.
 * A new Arduino will start in bind mode automatically.  Only an Arduino that was flashed for the first time (not previously bound) does this.  Re-flashing the software will retain the old binding unless the EEPROM has been erased.
 * Erasing the EEPROM on the Arduino will make it start up in bind mode just like a new Arduino. The Arduino sketch [here]( https://github.com/soligen2010/Reset_EEPROM) will erase the EEPROM.
 * Connect the Bind Jumper, or press the Bind button while the receiver powers on.
 * The protocol has a Un-bind command (it erases the EEPROM), after which a re-start will cause the receiver to enter bind mode just like a new Arduino. After an Unbind the LED will blink until the receiver is re-started.
 
-Turn on the transmitter in bind mode.  The LED turns on solid, then will blink slowly after a successful bind.  Re-start the receiver after the bind and take the transmitter out of Bind mode, then test the connection.
+Turn on the transmitter and have it send a Bind packet.  The receiver LED changes from always on to a slow blink when the bind is successful.  Re-start the receiver after the bind and take the transmitter out of Bind mode, then test the connection.
 
 ## Fail-safe
 The receiver fail-safes after 1 second when no packets are received.  If a connection is not restored within 3 seconds then the receiver will disarm.  
@@ -73,7 +73,7 @@ The receiver fail-safes after 1 second when no packets are received.  If a conne
 
 When a receiver is bound the failsafe values are reset to the default values, which are throttle minimum and all other channels at mid-point.
 
-## Customizing Fail-safe Values
+### Customizing Fail-safe Values
 __Do not set fail-safe values while in flight.__  Due to the length of time it takes to write the new fail-safe values to EEPROM, the receiver may go into fail-safe mode while saving the values, causing loss of control of the model.  Before flying a model, always test the fail-safe values after they have been set.
 
 Fail-safe set mode will set the fail-safe values.  This can be done one of two ways:
@@ -89,8 +89,79 @@ Diversity is achieved by using 2 NRF24L01 modules, which improves link reliabili
 
 Both modules listen for an incoming packet.  If the primary receiver does not get a packet when expected, the secondary receiver is checked for the missed packet.  After each packet, the primary/secondary receivers are swapped, except in the case where only the primary receiver had the packet, in which case this receiver will retain the primary role.  Telemetry packets are transmitted using the same receiver that was used to read the packet.  If both receivers got the incoming packet, then the packet in the secondary receiver is discarded.  The net effect is that the receivers alternate with each packet, except when only one receiver is receiving, in which case that receiver continues to be used for both the primary receiver and telemetry transmit.
 
-## Taranis Setup using Multi-Protocol Module
-Needs work
+## Taranis Setup using Multi-Protocol Module nad Open-TX 2.2
+
+With a Multi Protocol module installed in the Taranis, this is how to configure a model to use this protocol.  These instructions for for a Serial connection using OpenTX 2.2.  These instructions assume some familiarity with using OpenTX on the Taranis.
+
+### Initial Setup 
+   
+* Press Menu to go to Model Selection and Select the model you with to set up.
+* Press Page to get the the Model Setup page.
+* Scroll down to the Internal RF section and change Mode to OFF.
+* Scroll down to the External RF section and change Mode to MULT.
+* In the protocol field to the right of MULT, select Custom.
+* In the protocol field to the right of Custom, enter 33.  This is the protocol number. 
+  * __This number is temporary.  It likely will need to change when the TX half of this protocol is merged into the main Multi-Protocol project.__
+* The next number to the right is the sub-protocol.  For initial setup select 0 or 1.  Valid values are:
+  * 0 - Normal usage without telemetry
+  * 1 - Normal usage with telemetry (please see the section on telemetry)
+  * 6 - Set fail-safe values (see below and the Fail-safe section)
+  * 7 - Unbind receiver (see below)
+* Receiver No. should be filled in with the model number.
+* Move down to the Option value.  This value must be calculated to configure the protocol.  This is done by entering a number that is the sum of the options you wish to use.  Select the values from below and add them together to get the option value.
+  * _Channel Reduction_ reduces the number of channels transmitted.  This also reduces the size of the packet, which improves reliability. (Fewer bytes sent equates to less opportunity for error.)  For best reliability reduce the number of channels to the minimum number needed for the model. Note that at least 4 channels must always be sent.  Choose one of the following to add into the Option value:
+    * 0  - Send 16 channels
+    * 1  - Send 15 channels
+    * 2  - Send 14 channels
+    * 3  - Send 13 channels
+    * 4  - Send 12 channels
+    * 5  - Send 11 channels
+    * 6  - Send 10 channels
+    * 7  - Send 9 channels
+    * 8  - Send 8 channels
+    * 9  - Send 7 channels
+    * 10 - Send 6 channels
+    * 11 - Send 5 channels
+    * 12 - Send 4 channels
+  * _Output Mode_ indicates how the receiver should output the channels.  Choose one of the following to add into the Option value:
+    * 0 - Output servo PWM signals on pins D2 through D9 for channels 1 to 8
+	* 1 - Output channels 1 to 8 using PPM on pin D2
+	* 3 - Output channels 1 to 16 using SBUS __(Experimental)__
+  * _Transmitter Power_ Overrides the Multi-Protocol's normal high power setting.  See comments on power setting below.  Choose one of the following to add into the Option value:
+    * 0 - Use the NRF24L01+ HIGH power setting.  This is the normal Multi-Protocol module behavior.
+    * 64 - Use the NRF24L01+ MAX power setting instead of the HIGH power setting.  This over-rides the normal Multi-Protocol module behavior.
+  #### Notes on Power Setting
+  Using an NRF24L01+ with PA/LNA outputs 25 milliwatts for HIGH power and 100 milliwatts for MAX power.  Despite this there are reports that using MAX power on inexpensive Chinese modules provides worse range than using the HIGH power setting due to the noise added by the extra amplification and the lower quality Chinese components.  By adding shielding and using a good antenna, I get better range using MAX power even with Chinese components.  Your results may vary so range test your equipment and use the setting that provides the best results.
+
+### Binding Receiver
+* Turn on the receiver in Bind Mode. (See receiver setup above.)
+* In the transmitter Navigate to the Model Setup page.
+* In the External RF section, highlight BIND and press enter.
+* The receiver LED will blink when the bind is successful.
+* Restart the receiver.
+ 
+### Unbinding Receiver
+
+In order to un-bind a receiver using the transmitter, a model bound to the receiver must be configured in the transmitter.  With a model selected that is bound to the receiver:
+* Navigate to the Model Setup page.
+* Go to the External RF section.
+* Change the sub-protocol (second number after "Custom") to 7.
+* The receiver LED will fast blink when the un-bind is successful.
+When the receiver is restarted, it will start in Bind mode.
+
+### Setting Failsafe Values
+
+__Do not set fail-safe values while in flight.__ Please see the Customizing Fail-safe Values section for more information.
+
+* Navigate to the Model Setup page.
+* Go to the External RF section.
+* Place all switches in the desired fail-safe state.
+* Move the sticks to the desired fail-safe state.  Hold them in this position until the fail-safe settings are recorded by the receiver.
+* While holding the sticks, change the sub-protocol (second number after "Custom") to 6.  DO not go past 6.  If you even briefly go to 7 the receiver will un-bind.
+* When the LED is turned on, the Fail-safe settings are recorded
+* Change the sub-protocol back to its original setting. The LED will turn off.
+
+Always test the Fail-safe settings before flying.  Turning off the transmitter should initiate a Fail-safe after one second.
 
 ## Telemetry
 
@@ -106,11 +177,43 @@ The RSSI class encapsulates the RSSI calculations. If you are so inclined, feel 
 
 ### Analog Values
 
-Analog values are read on Arduino pins A6 and A7.  Running on a, Arduino with VCC of 5V, only values up to 5V can be read.  __A value on A6 or A7 over the Arduino VCC will cause  damage__, so care must be taken to ensure the voltage is in a safe range.
+Analog values are read on Arduino pins A6 and A7.  Running on a, Arduino with VCC of 5V, only values up to 5V can be read.  __A value on A6 or A7 that exceeds the Arduino VCC will cause  damage__, so care must be taken to ensure the voltage is in a safe range.
 
 Values from pins A6 and A7 come into a Taranis transmitter as telemetry values A1 and A2.  You can use either of these to read battery voltage or the output of current sensor.  The following article explains how to input battery voltage to A2 on an Frsky receiver using a voltage divider.  The same method can be used to read battery voltage on this receiver.  [http://olex.biz/tips/lipo-voltage-monitoring-with-frsky-d-receivers-without-sensors](http://olex.biz/tips/lipo-voltage-monitoring-with-frsky-d-receivers-without-sensors).
 
 The values sent are 0 - 255 corresponding to 0V - 5V.  This will need to be re-scaled to the actual voltage (or current, etc.) in the transmitter on the telemetry  configuration screen.
+
+## Flashing Firmware
+
+The Arduino development environment is required to compile the code and write the firmware to the Arduino Pro Mini. If you are not familiar with this, here are some resources to help you.
+
+* [https://www.arduino.cc/en/Guide/HomePage](https://www.arduino.cc/en/Guide/HomePage)
+* [https://www.arduino.cc/en/Guide/ArduinoProMini](https://www.arduino.cc/en/Guide/ArduinoProMini)
+* [https://www.youtube.com/watch?v=78HCgaYsA70](https://www.youtube.com/watch?v=78HCgaYsA70)
+* [http://lab.dejaworks.com/programming-arduino-mini-pro-with-ftdi-usb-to-ttl-serial-converter/](http://lab.dejaworks.com/programming-arduino-mini-pro-with-ftdi-usb-to-ttl-serial-converter/)
+
+## Receiver Test Harness
+
+The receiver code can be compiled as a test harness.  What this means is that instead of outputting the normal output signals, statistics are displayed on a 16x2 LCD screen about the packet success rate. To enable Test Harness mode, un-comment the following line in TestHarness.h.  No output will go to servos, flight controller, etc. when in test harness mode.
+
+```//#define TEST_HARNESS```
+
+The LCD displays 5 numbers.
+* Line 1:  Packet success rate (percent); Number of missed packets in a row; The number of time the secondary receiver  recovers a packet the primary receiver  missed
+* Line 2:  The number of good packets received; The number of missed or bad packets
+
+The LCD pin connections are:
+
+  LCD D4_PIN = Arduino D9
+  LCD D5_PIN = Arduino D8
+  LCD D6_PIN = Arduino D7
+  LCD D7_PIN = Arduino D6
+  LCD RS_PIN = Arduino D5
+  LCD EN_PIN = Arduino D4
+  
+More information on connecting the LCD is at [https://www.arduino.cc/en/Tutorial/LiquidCrystalDisplay](https://www.arduino.cc/en/Tutorial/LiquidCrystalDisplay).  However, I suggest using a 330 or 470 ohm resistor instead of the 220 ohms listed in the article to avoid pulling over 20 mA from the Arduino pin connected to the LED back-light.
+
+You can also connect an I2C LCD display.  This may require additional code editing and the installation of a different LCD library (from [https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads/](https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads/)).  Please see the comments in TestHarness.h for more details.
 
 ## Packet Format
 
@@ -167,8 +270,7 @@ Nick Gammon for his tutorials on interrupts and async reading of ADC pins at htt
 My wife, for tolerating the obsession I have had with this project.
 
 ## License Info
-Copyright 2017 by Dennis Cabell
-KE8FZX
+Copyright 2017 by Dennis Cabell (KE8FZX)
  
 To use this software, you must adhere to the license terms described below, and assume all responsibility for the use of the software.  The user is responsible for all consequences or damage that may result from using this software. The user is responsible for ensuring that the hardware used to run this software complies with local regulations and that any radio signal generated from use of this software is legal for that user to generate.  The author(s) of this software assume no liability whatsoever.  The author(s) of this software is not responsible for legal or civil consequences of using this software, including, but not limited to, any damages cause by lost control of a vehicle using this software.   If this software is copied or modified, this disclaimer must accompany all copies.
  

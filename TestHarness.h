@@ -28,11 +28,11 @@
 #define __have__TEST_HARNESS_h__
 
 //----------------------------------------------------------------------------------
-// The LCD displays 6 numbers.
+// The LCD displays 5 numbers.
 //
 // Line 1:  Packet success rate (percent); Number of missed packets in a row; The number of time the secondary reciever recovers a packet the primary reciever missed
 //
-// Line 2:  The number of good packets recieved; The number of missed or bad packets; The number of packets recieved with strengh below -64db
+// Line 2:  The number of good packets recieved; The number of missed or bad packets
 //
 // Un-comment the line below to compile as a test harness.  In this mode
 // there is no servo ouput.  Instead statistics are displayed on a 16x2 LCD.
