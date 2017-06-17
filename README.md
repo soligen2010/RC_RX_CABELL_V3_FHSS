@@ -49,7 +49,7 @@ Shielding will require using 2 layers of heat shrink tubing around the whole mod
 * Bend the ground wire back over the copper tape and solder it to the copper tape.
 * Encase as much of the board as possible again in heat shrink tubing.  Don’t cover the pins. Be sure to cover all the ground wire and copper tape shielding.
 
-These shielding steps are based partially  in the article at [http://blog.blackoise.de/2016/02/fixing-your-cheap-nrf24l01-palna-module/](http://blog.blackoise.de/2016/02/fixing-your-cheap-nrf24l01-palna-module/)
+These shielding steps are based partially  in the article at [http://blog.blackoise.de/2016/02/fixing-your-cheap-nrf24l01-palna-module/](http://blog.blackoise.de/2016/02/fixing-your-cheap-nrf24l01-palna-module/). Using the heat shrink and soldering the copper tape is a more robust implementation of the same concept.
 
 ## Receiver Output
 The output method is controlled via the option byte in the protocol header.  See the Taranis Setup section for  more details.
@@ -84,12 +84,36 @@ When fail-safe set mode is entered, the LED is turned on and stays on until the 
 
 Values for all channels can be set except for the throttle channel.  The fail-safe for throttle is always the minimum throttle.
 
+## Safety
+
+__Always remove the props when working on a model!__
+
+The receiver has a dis-arm feature to help prevent the motor from unintentionally spinning, however no system is 100%, so take care whenever you power up a model.  __Keep all body parts, clothing, and other objects out of the path of the prop.__
+
+Many ESCs and flight controllers have an arm sequence where the throttle must be set to minimum or some other condition to be met in order to arm.  This receiver also has the following arm/disarm behavior which complements ESC and flight controller arming behavior.
+
+When powered on the __receiver starts out in an armed state__. However, if no signal is detected within 3 seconds the receiver dis-arms.  The receiver also dis-arms if an RC signal is lost for 3 seconds. While dis-armed, only the minimum value will be sent on the throttle channel.  The receiver will re-arm when it receives an RC signal with a minimum value for the throttle channel.  If your model disarms in while in use, move the throttle to its minimum position to re-arm once the RC signal has been re-established.
+
+Powering on the model before the transmitter will cause the receiver to dis-arm in 3 seconds as long as there is no RC signal.  During this power on time there is no output from the receiver until an RC signal is first received from the transmitter, so the ESC or flight controller will not arm if it requires a signal to arm.
+
+Powering the transmitter off before the model will cause the receiver to dis-arm after 3 seconds, forcing the throttle channel to minimum.
+
+There is a 10k pull-up resistor on pin D2 that is essential for safety when using PPM.  This resistor prevents random signals from being output from the receiver while it is initializing.  
+
+### Sending Stick Commands to ESC
+
+__Stay Safe!  Only do this with props removed!__
+
+The reason the receiver initializes in an armed state to to allow an ESC to be configured with stick commands, which may require the initial throttle setting sent to the ESC to be max throttle. If you power on the transmitter before the model, then when the model acquires the signal the values received will be immediately output.  This means that a high throttle will be immediately output.  __Do not do this if your ESC starts in an armed state!__
+
+Please refer to your ESC documentation for details on configuring it with stick commands.
+
 ## Diversity
 Diversity is achieved by using 2 NRF24L01 modules, which improves link reliability. Try to orient the antennas close to 90 degrees to each other so at least one antenna has a good orientation to the transmitter antenna.  The use of a second NRF24L01 module for diversity is optional.  The code automatically detects if one or 2 modules are connected.  See the "with diversity" schematic in the hardware folder for how to wire the NRF24L01 modules.
 
 Both modules listen for an incoming packet.  If the primary receiver does not get a packet when expected, the secondary receiver is checked for the missed packet.  After each packet, the primary/secondary receivers are swapped, except in the case where only the primary receiver had the packet, in which case this receiver will retain the primary role.  Telemetry packets are transmitted using the same receiver that was used to read the packet.  If both receivers got the incoming packet, then the packet in the secondary receiver is discarded.  The net effect is that the receivers alternate with each packet, except when only one receiver is receiving, in which case that receiver continues to be used for both the primary receiver and telemetry transmit.
 
-## Taranis Setup using Multi-Protocol Module nad Open-TX 2.2
+## Taranis Setup using Multi-Protocol Module and Open-TX 2.2
 
 With a Multi Protocol module installed in the Taranis, this is how to configure a model to use this protocol.  These instructions for for a Serial connection using OpenTX 2.2.  These instructions assume some familiarity with using OpenTX on the Taranis.
 
@@ -194,7 +218,7 @@ The Arduino development environment is required to compile the code and write th
 
 ## Receiver Test Harness
 
-The receiver code can be compiled as a test harness.  What this means is that instead of outputting the normal output signals, statistics are displayed on a 16x2 LCD screen about the packet success rate. To enable Test Harness mode, un-comment the following line in TestHarness.h.  No output will go to servos, flight controller, etc. when in test harness mode.
+The receiver code can be compiled as a test harness.  What this means is that instead of outputting the normal output signals, statistics are displayed on a 16x2 LCD screen about the packet success rate. To enable Test Harness mode, uncomment the following line in TestHarness.h.  No output will go to servos, flight controller, etc. when in test harness mode.
 
 ```//#define TEST_HARNESS```
 
