@@ -111,6 +111,7 @@ void TestHarness::failSafe() {
     lcd.setCursor(0, 0);lcd.print(F("Fail-safe"));
   }
   resetCounters();
+  displayPacketCount = 0;
 }
 
 
@@ -121,6 +122,7 @@ void TestHarness::reSync() {
     lcd.setCursor(0, 0);lcd.print(F("Re-sync"));
   }
   resetCounters();
+  displayPacketCount = 0;
 }
 
 
