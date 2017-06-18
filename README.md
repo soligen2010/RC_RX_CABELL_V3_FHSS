@@ -124,7 +124,7 @@ With a Multi Protocol module installed in the Taranis, this is how to configure 
 * Scroll down to the Internal RF section and change Mode to OFF.
 * Scroll down to the External RF section and change Mode to MULT.
 * In the protocol field to the right of MULT, select Custom.
-* In the protocol field to the right of Custom, enter 33.  This is the protocol number. 
+* In the protocol field to the right of Custom, enter 34.  This is the protocol number. 
   * __This number is temporary.  It likely will need to change when the TX half of this protocol is merged into the main Multi-Protocol project.__
 * The next number to the right is the sub-protocol.  For initial setup select 0 or 1.  Valid values are:
   * 0 - Normal usage without telemetry
