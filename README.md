@@ -4,7 +4,7 @@ RC_RX_CABELL_V3_FHSS is an open source receiver for remote controlled vehicles. 
 The hardware for this receiver is an Arduino Pro Mini (using a 5V ATMEGA328P at 16 Mhz) and one or two NRF24L01+ modules.  Both are inexpensively available on-line.  Be sure to get the version of a Pro Mini that has pins A4, A5, A6 and A7 broken out.
 
 ~~The transmitter side of this RC protocol is in the Multi-protocol TX Module project at [https://github.com/pascallanger/DIY-Multiprotocol-TX-Module]( https://github.com/pascallanger/DIY-Multiprotocol-TX-Module).~~
-Transmitter code has not yet been merged into Multiprotocol.  To try this out, please use the soligen2010 fork of MultiProtocol at [https://github.com/soligen2010/DIY-Multiprotocol-TX-Module]( https://github.com/soligen2010/DIY-Multiprotocol-TX-Module).
+Transmitter code has not yet been merged into Multi-Protocol.  To try this out, please use the soligen2010 fork of MultiProtocol at [https://github.com/soligen2010/DIY-Multiprotocol-TX-Module]( https://github.com/soligen2010/DIY-Multiprotocol-TX-Module).
 
 ## The Protocol
 The protocol used is named CABELL_V3 (the third version, but the first version publicly released).  It is a FHSS protocol using the NRF24L01+ 2.4 GHz transceiver.  45 channels are used from 2.403 through 2.447 GHz.  The reason for using 45 channels is to keep operation within the overlap area between the 2.4 GHz ISM band (governed in the USA by FCC part 15) and the HAM portion of the band (governed in the USA by FCC part 97).  This allows part 15 compliant use of the protocol, while allowing licensed amateur radio operators to operate under the less restrictive part 97 rules if desired.
@@ -15,10 +15,10 @@ The CABELL_V3 protocol can be configured to send between 4 and 16 RC channels, h
 
 I recommend reducing the number of channels as much as possible based on what your model requires.  Fewer channels will use a smaller packet size, which improves transmission reliability (fewer bytes sent means less opportunity for errors).
 
-The protocol also assigns each model a different number so one model setting does not control the wrong model.  The protocol can distinguish up to 255 different models, but be aware that the Multiprotocol transmitter software only does 16.
+The protocol also assigns each model a different number so one model setting does not control the wrong model.  The protocol can distinguish up to 255 different models, but be aware that the Multi-Protocol transmitter software only does 16.
 
 ## Hardware
-A 5V 16Mhz Arduino Pro Mini and one or 2 NRF24L01+ modules are needed for this receiver.  Be sure to get the version of a Pro Mini that has pins A4 and A5 broken out (and A6, A7 too for telemetry analog inputs).  The hardware folder contains a schematic and a PCB layout using a single transceiver module for PWN or PPM output; however, this version of the PCB has not been tested.  I am still using the previous version of the PCB and modifying it to implement the changes included in the new version. If anyone tries this PCB version, please open an issue let me know how it works. 
+A 5V 16Mhz Arduino Pro Mini and one or 2 NRF24L01+ modules are needed for this receiver.  Be sure to get the version of a Pro Mini that has pins A4 and A5 broken out (and A6, A7 too for telemetry analog inputs).  The [hardware folder](https://github.com/soligen2010/RC_RX_CABELL_V3_FHSS/tree/master/hardware) contains a schematic and a PCB layout using a single transceiver module for PWN or PPM output; however, this version of the PCB has not been tested.  I am still using the previous version of the PCB and modifying it to implement the changes included in the new version. If anyone tries this PCB version, please open an issue let me know how it works. 
 
 There is also a schematic for using 2 NRF24L01 modules for diversity.  If anyone designs a board for this, please contribute it.  This schematic also has the signal inverter needed for SBUS.
 
