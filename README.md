@@ -148,9 +148,9 @@ With a Multi Protocol module installed in the Taranis, this is how to configure 
     * 11 - Send 5 channels
     * 12 - Send 4 channels
   * _Output Mode_ indicates how the receiver should output the channels.  Choose one of the following to add into the Option value:
-    * 0 - Output servo PWM signals on pins D2 through D9 for channels 1 to 8
-	* 1 - Output channels 1 to 8 using PPM on pin D2
-	* 3 - Output channels 1 to 16 using SBUS __(Experimental)__
+    * 0  - Output servo PWM signals on pins D2 through D9 for channels 1 to 8
+	* 16 - Output channels 1 to 8 using PPM on pin D2
+	* 32 - Output channels 1 to 16 using SBUS __(Experimental)__
   * _Transmitter Power_ Overrides the Multi-Protocol's normal high power setting.  See comments on power setting below.  Choose one of the following to add into the Option value:
     * 0 - Use the NRF24L01+ HIGH power setting.  This is the normal Multi-Protocol module behavior.
     * 64 - Use the NRF24L01+ MAX power setting instead of the HIGH power setting.  This over-rides the normal Multi-Protocol module behavior.
