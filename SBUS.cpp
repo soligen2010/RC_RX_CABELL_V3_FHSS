@@ -49,7 +49,7 @@ void sbusSetup(){
   TCCR1B |= (1 << CS11);  // 8 prescaler: 0,5 microseconds at 16mhz
   TIMSK1 |= (1 << OCIE1A); // enable timer compare interrupt
   
-  sbusPacket[SBUS_START_BYTE] = 0xF0;
+  sbusPacket[SBUS_START_BYTE] = 0x0F;
   sbusPacket[SBUS_FLAG_BYTE]  = 0x00;
   sbusPacket[SBUS_END_BYTE]   = 0x00;
   
@@ -81,9 +81,11 @@ void setSbusOutputChannelValue(uint8_t channel, uint16_t value) {
 
   uint8_t firstBit = 8 + (constrain(channel,0,15) * 11);  // Start byte plus 11 bits per channel. 16 channels
   uint8_t byteIndex = firstBit / 8;
-  uint8_t bitIndex = 7 - (firstBit % 8);
-  uint16_t adjustedValue = value - 476;
-
+  uint8_t bitIndex = (firstBit % 8);
+  int16_t adjustedValue = constrain(value,CHANNEL_MIN_VALUE,CHANNEL_MAX_VALUE);
+  adjustedValue = map(adjustedValue - CHANNEL_MID_VALUE,(CHANNEL_MIN_VALUE - CHANNEL_MID_VALUE),(CHANNEL_MAX_VALUE - CHANNEL_MID_VALUE),-SBUS_OFFSET_FROM_MID_POINT,SBUS_OFFSET_FROM_MID_POINT);
+  adjustedValue += SBUS_MID_POINT;
+  
   noInterrupts();                       //Turn off interrupts so that SBUS_ISR does not run while a value is being updated
   for (uint8_t x = 0; x < 11; x++) {
     if (adjustedValue & 0x0001) {
@@ -92,11 +94,11 @@ void setSbusOutputChannelValue(uint8_t channel, uint16_t value) {
       sbusPacket[byteIndex] &= ~_BV(bitIndex);      
     }
     adjustedValue >>=  1; 
-    if (bitIndex == 0) {
-      bitIndex = 7;
+    if (bitIndex == 7) {
+      bitIndex = 0;
       byteIndex++;
     } else{
-      bitIndex--;      
+      bitIndex++;      
     }    
   }
   interrupts();

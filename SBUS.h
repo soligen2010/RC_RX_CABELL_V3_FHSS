@@ -30,8 +30,13 @@
 #define SBUS_END_BYTE    24
 #define SBUS_FLAG_BYTE   23
 
-#define SBUS_FAILSAFE_MASK    0x10
-#define SBUS_FRAME_LOST_MASK  0x20
+#define SBUS_DIGITAL_17_MASK   0x01
+#define SBUS_DIGITAL_18_MASK   0x02
+#define SBUS_FRAME_LOST_MASK   0x04
+#define SBUS_FAILSAFE_MASK     0x08
+
+#define SBUS_MID_POINT                993
+#define SBUS_OFFSET_FROM_MID_POINT    800
 
 void sbusSetup();
 void sbusDisable();
