@@ -33,7 +33,7 @@
 #define onState               1                          //set polarity of the pulses: 1 is positive, 0 is negative
 #define TICKS_PER_US          2                          //based on timer settings, the number of ticks per microsecond
 ///////////////////// CALIBRATION //////////////////////////////////
-#define MICROSECOND_RANGE_EXPANSION       .02            // If the low to high range is not 1000, then adjust this to get the difference to 1000
+#define MICROSECOND_RANGE_EXPANSION       .01            // If the low to high range is not 1000, then adjust this to get the difference to 1000
 #define MICROSECOND_RANGE_OFFSET          -2             // If the output range is not centered at 1500, use this to offset.  Adjust after MICROSECOND_RANGE_EXPANSION
 ////////////////////////////////////////////////////////////////////
 #define PPM_PulseLen_ticks  (PPM_PulseLen_us * TICKS_PER_US)      //set the pulse length
