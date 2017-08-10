@@ -297,7 +297,7 @@ bool getPacket() {
   static unsigned long lastPacketTime = 0;  
   static bool inititalGoodPacketRecieved = false;
   static unsigned long nextAutomaticChannelSwitch = micros() + RESYNC_WAIT_MICROS;
-  static unsigned long lastRadioPacketeRecievedTime = 0;
+  static unsigned long lastRadioPacketeRecievedTime = millis() - (long)RESYNC_TIME_OUT;;
   static bool hoppingLockedIn = false;
   static uint16_t sequentialHitCount = 0;
   static uint16_t sequentialMissCount = 0;
@@ -405,7 +405,7 @@ bool getPacket() {
   if (!hoppingLockedIn) {
 	if (!powerOnLock) {    
       goodPacket_rx = false;           // Always consider a bad packet until initial lock is obtained so no control signals are output.
-	  if (sequentialHitCount > 45) {
+	  if (sequentialHitCount > (CABELL_RADIO_CHANNELS * 5) ) {     // Ensure strong signal on all channels
 		  powerOnLock = true;
 		  hoppingLockedIn = true;
         if (currentOutputMode != CABELL_RECIEVER_OUTPUT_SBUS) {
@@ -419,7 +419,7 @@ bool getPacket() {
         Serial.println(F("Signal Locked"));
       }
     }
-    if ((sequentialMissCount > 5) || (sequentialMissCount + sequentialHitCount > 100)) {  // if 5 misses in a row assume it is a bad lock, or if after 100 packets there is still no lock
+    if ((sequentialMissCount > 5) || (sequentialMissCount + sequentialHitCount > 100)) {  // if more tnan 5 misses in a row assume it is a bad lock, or if after 100 packets there is still no lock
       //if this happens then there is a bad lock and we should try to sync again.
       lastRadioPacketeRecievedTime = millis() - (long)RESYNC_TIME_OUT;
       nextAutomaticChannelSwitch = millis() + RESYNC_WAIT_MICROS;

@@ -65,7 +65,7 @@
 #define DEFAULT_PACKET_INTERVAL         ((uint32_t)3000) 
 #define MAX_PACKET_INTERVAL             ((uint32_t)4000) // Max packet interval - used with telemetry and 16 channels
 #define INITIAL_PACKET_TIMEOUT_ADD      200ul
-#define RESYNC_TIME_OUT                 ((uint32_t)3000000)                                                      //  Go to re-sync if no packet received in 3 seconds
+#define RESYNC_TIME_OUT                 ((uint32_t)2000000)                                                      //  Go to re-sync if no packet received in 3 seconds
 #define RESYNC_WAIT_MICROS              (((((uint32_t)CABELL_RADIO_CHANNELS)*5ul)+8ul) * MAX_PACKET_INTERVAL)   // when syncing listen on each channel for slightly longer than the time it takes to cycle through all channels
 
 #define INITIAL_TELEMETRY_PACKETS_TO_SKIP  1000   // dont send initial telemetry packets to avoid anoying warnings at startup
