@@ -44,9 +44,9 @@ void sbusSetup(){
   TCCR1A = 0; // set entire TCCR1 register to 0
   TCCR1B = 0;
   
-  OCR1A = SBUS_PACKET_RATE * 2000;  // compare match register. at prescalar 8 and 16 Mhz 14000 is 7 ms.  This defines the SBUS packet rate
+  OCR1A = SBUS_PACKET_RATE * 2000;  // compare match register. at pre-scalar 8 and 16 Mhz 14000 is 7 ms.  This defines the SBUS packet rate
   TCCR1B |= (1 << WGM12);  // turn on CTC mode
-  TCCR1B |= (1 << CS11);  // 8 prescaler: 0,5 microseconds at 16mhz
+  TCCR1B |= (1 << CS11);  // 8 pre-scaler: 0,5 microseconds at 16mhz
   TIMSK1 |= (1 << OCIE1A); // enable timer compare interrupt
   
   sbusPacket[SBUS_START_BYTE] = 0x0F;

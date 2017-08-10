@@ -1,6 +1,6 @@
 //
 // Changed to not use the interrupt 1 vector
-// in your own Interupt 1 routing call interruptOneProcessing()
+// in your own Interrupt 1 routing call interruptOneProcessing()
 //
 
 /*

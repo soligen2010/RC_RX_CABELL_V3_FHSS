@@ -1,6 +1,6 @@
 //
 // Copied from Arduino Servo library and changed to not use the interrupt 1 vector
-// Instead in Interupt 1 routine call interruptOneProcessing().
+// Instead in Interrupt 1 routine call MyServoInterruptOneProcessing().
 // Also tweaked writeMicroseconds to only disable interrupts and change the ticks 
 // value if the value has actually changed.
 //

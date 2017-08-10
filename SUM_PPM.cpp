@@ -53,7 +53,7 @@ void ppmSetup(uint8_t pin, uint8_t channelCount){
   
   OCR1A = 100;  // compare match register, change this
   TCCR1B |= (1 << WGM12);  // turn on CTC mode
-  TCCR1B |= (1 << CS11);  // 8 prescaler: 0,5 microseconds at 16mhz
+  TCCR1B |= (1 << CS11);  // 8 pre-scaler: 0,5 microseconds at 16mhz
   TIMSK1 |= (1 << OCIE1A); // enable timer compare interrupt
   interrupts();
   ppmEnabled = true;
@@ -109,7 +109,7 @@ void SUM_PPM_ISR() {
       cur_chan_numb = 0;
       calc_rest = 0;
     } else {
-      int16_t ppmValue = ppmValueArray[cur_chan_numb];          //Copy out of voltatile storage since it is used more than once
+      int16_t ppmValue = ppmValueArray[cur_chan_numb];          //Copy out of volatile storage since it is used more than once
       OCR1A = ppmValue;
       calc_rest = calc_rest + ppmValue + PPM_PulseLen_ticks;
       cur_chan_numb++;

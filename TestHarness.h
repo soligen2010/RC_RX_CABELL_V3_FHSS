@@ -30,19 +30,19 @@
 //----------------------------------------------------------------------------------
 // The LCD displays 5 numbers.
 //
-// Line 1:  Packet success rate (percent); Number of missed packets in a row; The number of time the secondary reciever recovers a packet the primary reciever missed
+// Line 1:  Packet success rate (percent); Number of missed packets in a row; The number of time the secondary receiver recovers a packet the primary receiver missed
 //
-// Line 2:  The number of good packets recieved; The number of missed or bad packets
+// Line 2:  The number of good packets received; The number of missed or bad packets
 //
 // Un-comment the line below to compile as a test harness.  In this mode
-// there is no servo ouput.  Instead statistics are displayed on a 16x2 LCD.
+// there is no servo output.  Instead statistics are displayed on a 16x2 LCD.
 // This is useful for testing NRF24L01 modules for range/reliability
 // and for testing antennas.
 
 //#define TEST_HARNESS
 //#define USE_I2C_LCD
 
-// For I2C LCD the pins for the I2C packback port extended need to be specified along with the I2C address
+// For I2C LCD the pins for the I2C backpack port extended need to be specified along with the I2C address
 // There are various version on the market, so these may need to be changed which version is being used
 // some version are documented at https://arduino-info.wikispaces.com/LCD-Blue-I2C
 // I2C requires the NewLiquidCrystal library to be installed.  Get it at https://bitbucket.org/fmalpartida/new-liquidcrystal/downloads/
@@ -56,7 +56,7 @@
   #define I2C_D5_PIN              5
   #define I2C_D6_PIN              6
   #define I2C_D7_PIN              7
-  #define I2C_BL_PIN              3   //Backlight
+  #define I2C_BL_PIN              3   //Back light
   #define I2C_BACKLIGHT_POLARITY  POSITIVE
 #endif
 

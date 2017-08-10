@@ -58,14 +58,14 @@
 #define THROTTLE_CHANNEL          3
 #define AUX1_CHANNEL              4  // only AUX1 needs to be specified here.  All subsequence AUX channels follow in sequence
 
-#define RX_CONNECTION_TIMEOUT     1000000     // If no packet recieved in this time frame apply failsafe settings. In microseconds
-#define RX_DISARM_TIMEOUT         3000000     // If no packet recieved in this time frame disarm the throttle. In microseconds
+#define RX_CONNECTION_TIMEOUT     1000000     // If no packet received in this time frame apply failsafe settings. In microseconds
+#define RX_DISARM_TIMEOUT         3000000     // If no packet received in this time frame disarm the throttle. In microseconds
 
 // FHSS parameters
 #define DEFAULT_PACKET_INTERVAL         ((uint32_t)3000) 
 #define MAX_PACKET_INTERVAL             ((uint32_t)4000) // Max packet interval - used with telemetry and 16 channels
 #define INITIAL_PACKET_TIMEOUT_ADD      200ul
-#define RESYNC_TIME_OUT                 ((uint32_t)2000000)                                                      //  Go to resync if no packet recieved in 2 seconds
+#define RESYNC_TIME_OUT                 ((uint32_t)2000000)                                                      //  Go to re-sync if no packet received in 2 seconds
 #define RESYNC_WAIT_MICROS              (((((uint32_t)CABELL_RADIO_CHANNELS)*5ul)+8ul) * MAX_PACKET_INTERVAL)   // when syncing listen on each channel for slightly longer than the time it takes to cycle through all channels
 
 #define INITIAL_TELEMETRY_PACKETS_TO_SKIP  1000   // dont send initial telemetry packets to avoid anoying warnings at startup
@@ -85,13 +85,13 @@ typedef struct {
    } RxMode;
    uint8_t  reserved = 0;
    uint8_t  option;
-                          /*   mask 0x0F    : Channel reduction.  The number of channels to not send (subtracted frim the 16 max channels) at least 4 are always sent
-                           *   mask 0x30>>4 : Reciever outout mode
+                          /*   mask 0x0F    : Channel reduction.  The number of channels to not send (subtracted from the 16 max channels) at least 4 are always sent
+                           *   mask 0x30>>4 : Receiver output mode
                            *                  0 (00) = Single PPM on individual pins for each channel 
                            *                  1 (01) = SUM PPM on channel 1 pin
                            *                  2 (10) = Future use.  Reserved for SBUS output
                            *                  3 (11) = Unused
-                           *   mask 0x40>>6   Contains max power override flag for Multiprotocol TX module. Also sent to RX
+                           *   mask 0x40>>6   Contains max power override flag for Multi-protocol TX module. Also sent to RX
                            *   mask 0x80>>7   Unused 
                            */  
    uint8_t  modelNum;
@@ -120,7 +120,7 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
 void setFailSafeDefaultValues();
 void loadFailSafeDefaultValues();
 void setFailSafeValues(uint16_t newFailsafeValues[]);
-unsigned long  sendTelemetryPacket();    //returns micros of when the transmit is esspected to be complete
+unsigned long  sendTelemetryPacket();    //returns micros of when the transmit is expected to be complete
 uint8_t calculateRSSI(bool goodPacket);
 void ADC_Processing();
 bool failSafeButtonHeld();
@@ -129,4 +129,3 @@ void initializeRadio(My_RF24* radio);
 void swapRecievers();
 
 #endif
-
