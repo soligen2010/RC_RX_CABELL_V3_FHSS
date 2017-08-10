@@ -49,7 +49,9 @@ void setup(void) {
   digitalWrite(LED_PIN, LOW);
 
   ADC_Processing();   // Initial analog reads for A6/A7.  Initial call returns bad value so call 3 times to get a good starting value from each pin
+  while (!bit_is_clear(ADCSRA, ADSC));  // wait for conversion
   ADC_Processing();
+  while (!bit_is_clear(ADCSRA, ADSC));  // wait for conversion
   ADC_Processing();
  
   setupReciever();
