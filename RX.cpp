@@ -136,6 +136,10 @@ void setupReciever() {
   
   radio1.begin();
   radio2.begin();
+  
+  #ifdef TEST_HARNESS
+    Serial.println(F("Compiled for transceiver testing. Output Disabled.  Use LCD."));
+  #endif
 
   // Set primary and secondary receivers.
   // If only one is present, then both primary and secondary receiver pointers end up pointing to the same radio.
