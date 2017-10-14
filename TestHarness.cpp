@@ -120,6 +120,7 @@ void TestHarness::reSync() {
   if (firstDisplay) {
     lcd.clear();
     lcd.setCursor(0, 0);lcd.print(F("Re-sync"));
+    firstDisplay = false;
   }
   resetCounters();
   displayPacketCount = 0;
