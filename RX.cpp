@@ -37,8 +37,8 @@
 #include "My_nRF24L01.h"
 #include "SBUS.h"
 
-My_RF24 radio1(RADIO1_CSN_PIN,RADIO1_CSN_PIN);  
-My_RF24 radio2(RADIO2_CSN_PIN,RADIO2_CSN_PIN);  
+My_RF24 radio1(RADIO1_CE_PIN,RADIO1_CSN_PIN);
+My_RF24 radio2(RADIO2_CE_PIN,RADIO2_CSN_PIN);  
 
 My_RF24* primaryReciever = NULL;
 My_RF24* secondaryReciever = NULL;
@@ -204,7 +204,11 @@ void setupReciever() {
 void outputChannels() {
 #ifndef TEST_HARNESS
     if (!throttleArmed) {
+#ifdef SAFETY_LOW
       channelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;     // Safety precaution.  Min throttle if not armed
+#elif defined(SAFETY_MID)
+      channelValues[THROTTLE_CHANNEL] = CHANNEL_MID_VALUE;     // Safety precaution.  Min throttle if not armed
+#endif
     }
     
     bool firstPacketOnMode = false;
@@ -619,7 +623,11 @@ void setFailSafeDefaultValues() {
   for (int x = 0; x < CABELL_NUM_CHANNELS; x++) {
     defaultFailSafeValues[x] = CHANNEL_MID_VALUE;
   }
-  defaultFailSafeValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;           // Throttle should always be the min value when failsafe}
+#ifdef SAFETY_LOW
+  defaultFailSafeValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;           // Throttle should always be the min value when failsafe
+#elif defined(SAFETY_MID)
+  defaultFailSafeValues[THROTTLE_CHANNEL] = CHANNEL_MID_VALUE;           // Throttle should always be the min value when failsafe
+#endif
   setFailSafeValues(defaultFailSafeValues);  
 }
 
@@ -631,7 +639,11 @@ void loadFailSafeDefaultValues() {
       failSafeChannelValues[x] = CHANNEL_MID_VALUE;
     }
   }
+#ifdef SAFETY_LOW
   failSafeChannelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;     // Throttle should always be the min value when failsafe
+#elif defined(SAFETY_MID)
+  failSafeChannelValues[THROTTLE_CHANNEL] = CHANNEL_MID_VALUE;     // Throttle should always be the min value when failsafe
+#endif
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -639,7 +651,11 @@ void setFailSafeValues(uint16_t newFailsafeValues[]) {
     for (int x = 0; x < CABELL_NUM_CHANNELS; x++) {
       failSafeChannelValues[x] = newFailsafeValues[x];
     }
+#ifdef SAFETY_LOW
     failSafeChannelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;           // Throttle should always be the min value when failsafe}
+#elif defined(SAFETY_MID)
+    failSafeChannelValues[THROTTLE_CHANNEL] = CHANNEL_MID_VALUE;           // Throttle should always be the min value when failsafe}
+#endif
     EEPROM.put(failSafeChannelValuesEEPROMAddress,failSafeChannelValues);  
     if (currentOutputMode != CABELL_RECIEVER_OUTPUT_SBUS) {
       Serial.println(F("Fail Safe Values Set"));
@@ -764,7 +780,13 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
     case CABELL_RxTxPacket_t::RxMode_t::normal :  if (modelNum == currentModel) {
                                                     digitalWrite(LED_PIN, LOW);
                                                     failSafeValuesHaveBeenSet = false;             // Reset when not in setFailSafe mode so next time failsafe is to be set it will take
+#ifdef SAFETY_LOW
                                                     if (!throttleArmed && (tempHoldValues[THROTTLE_CHANNEL] <= CHANNEL_MIN_VALUE + 10)) { 
+#elif defined(SAFETY_MID)
+                                                    if (!throttleArmed && (tempHoldValues[THROTTLE_CHANNEL] <= CHANNEL_MID_VALUE + 10) && (tempHoldValues[THROTTLE_CHANNEL] >= CHANNEL_MID_VALUE - 10)) { 
+#else
+                                                    { 
+#endif
                                                       if (currentOutputMode != CABELL_RECIEVER_OUTPUT_SBUS) {
                                                         Serial.println("Throttle Armed");             // Don't use F macro here.  Want this to be fast as it is in the main loop logic
                                                       }
