@@ -5,6 +5,10 @@ The hardware for this receiver is an Arduino Pro Mini (using a 5V ATMEGA328P at 
 
 The transmitter side of this RC protocol is in the Multi-protocol TX Module project at [https://github.com/pascallanger/DIY-Multiprotocol-TX-Module]( https://github.com/pascallanger/DIY-Multiprotocol-TX-Module).
 
+Since there are on-going changes to the main Multi-protocol branch, if you have issues or are using experimental features please test with the solgen2010 fork, which is the latest version tested with the receiver [https://github.com/soligen2010/DIY-Multiprotocol-TX-Module]( https://github.com/soligen2010/DIY-Multiprotocol-TX-Module).
+
+Note: The no-pulses failsafe feature has not yet been merged into pascallanger. Use the soligen2010 fork if you want to use this feature.
+
 ## The Protocol
 The protocol used is named CABELL_V3 (the third version, but the first version publicly released).  It is a FHSS protocol using the NRF24L01+ 2.4 GHz transceiver.  45 channels are used from 2.403 through 2.447 GHz.  The reason for using 45 channels is to keep operation within the overlap area between the 2.4 GHz ISM band (governed in the USA by FCC part 15) and the HAM portion of the band (governed in the USA by FCC part 97).  This allows part 15 compliant use of the protocol, while allowing licensed amateur radio operators to operate under the less restrictive part 97 rules if desired.
 
@@ -82,6 +86,8 @@ Fail-safe set mode will set the fail-safe values.  This can be done one of two w
 When fail-safe set mode is entered, the LED is turned on and stays on until the failsafe set mode is exited.  Only the values from the first packet received in fail-safe set mode are saved (this is to avoid accidentally using up all of the EEPROMs limited number of write operations)
 
 Values for all channels can be set except for the throttle channel.  The fail-safe for throttle is always the minimum throttle.
+
+If the receiver was bound with Failsafe No Pulses, then customizing values does not apply.
 
 ## Safety
 
@@ -186,6 +192,19 @@ __Do not set fail-safe values while in flight.__ Please see the Customizing Fail
 
 Always test the Fail-safe settings before flying.  Turning off the transmitter should initiate a Fail-safe after one second.
 
+### Setting Failsafe No Pulses (Experimental)
+
+Failsafe No Pulses can only be set at bind time.  All servos will receive no pulses during a fail-safe, so custom fail safe values do not apply.  If the receiver is on SBUS output mode, the SBUS output is stopped during failsafe.
+
+* Unbind the receiver.
+* Navigate to the Model Setup page.
+* Go to the External RF section.
+* Change the sub-protocol to 5.  
+* Perform the Bind procedure.
+* Change the sub-protocol to the desired setting for flying.
+
+Always test the Fail-safe settings before flying.  Turning off the transmitter should initiate a Fail-safe after one second.
+
 ## Telemetry
 
 When the sub-protocol is set to Normal with Telemetry, the receiver sends telemetry packets back to the transmitter.  Three values are returned, a simulated RSSI, and the voltages on the Arduino pins A6 and A7.  A receiver module with diversity is recommended when using telemetry to increase the reliability of the telemetry packets being received by the transmitter.
@@ -249,6 +268,7 @@ typedef struct {
          setFailSafe            = 2,
          normalWithTelemetry    = 3,  
          telemetryResponse      = 4,
+         bindFalesafeNoPulse    = 5,   (experimental)
          unBind                 = 127
    } RxMode;
    uint8_t  reserved = 0;

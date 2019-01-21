@@ -61,7 +61,8 @@ uint16_t failSafeChannelValues [CABELL_NUM_CHANNELS];
 
 bool throttleArmed = true;
 bool bindMode = false;     // when true send bind command to cause receiver to bind enter bind mode
-bool failSafeDisplayFlag = true;
+bool failSafeMode = false;
+bool failSafeNoPulses = false;
 bool packetMissed = false;
 uint32_t packetInterval = DEFAULT_PACKET_INTERVAL;
 
@@ -100,20 +101,30 @@ void attachServoPins() {
 //--------------------------------------------------------------------------------------------------------------------------
 void detachServoPins() {
 
-  for (uint8_t x = 0; x < RX_NUM_CHANNELS; x++)
+  uint8_t servoPin[RX_NUM_CHANNELS] = SERVO_OUTPUT_PINS;
+
+  for (uint8_t x = 0; x < RX_NUM_CHANNELS; x++) {
     channelServo[x].detach();
+    pinMode (servoPin[x],INPUT_PULLUP);
+  }
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
 void setupReciever() {  
 
   pinMode (PPM_OUTPUT_PIN,INPUT_PULLUP);   // Set this pin mode on PPM pin to keep PPM from floating until the output mode is received.  A 10k pull-up resistor is better as the pin floats until this line runs
+  detachServoPins();                       // Sets input pullup on all servo pins to they dont float.
   
   uint8_t softRebindFlag;
 
   EEPROM.get(softRebindFlagEEPROMAddress,softRebindFlag);
   EEPROM.get(radioPipeEEPROMAddress,radioNormalRxPipeID);
   EEPROM.get(currentModelEEPROMAddress,currentModel);
+
+  if (softRebindFlag == BOUND_WITH_FAILSAFE_NO_PULSES) {
+    softRebindFlag = DO_NOT_SOFT_REBIND;
+    failSafeNoPulses = true;
+  }  
  
   if ((digitalRead(BIND_BUTTON_PIN) == LOW) || (softRebindFlag != DO_NOT_SOFT_REBIND)) {
     bindMode = true;
@@ -205,43 +216,50 @@ void setupReciever() {
 //--------------------------------------------------------------------------------------------------------------------------
 void outputChannels() {
 #ifndef TEST_HARNESS
-    if (!throttleArmed) {
-      channelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;     // Safety precaution.  Min throttle if not armed
-    }
+    if (!bindMode) {
+      if (failSafeNoPulses && failSafeMode) {
+        nextOutputMode = 255;   // set to unused output mode
+      }
+      
+      if (!throttleArmed) {
+        channelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;     // Safety precaution.  Min throttle if not armed
+      }
+      
+      bool firstPacketOnMode = false;
     
-    bool firstPacketOnMode = false;
-  
-    if (currentOutputMode != nextOutputMode) {   // If new mode, turn off all modes
-     firstPacketOnMode = true;
-     detachServoPins();
-     if (PPMEnabled()) ppmDisable();
-    }
-  
-    if (nextOutputMode == CABELL_RECIEVER_OUTPUT_PWM) {
-      outputPWM();                               // Do this first so we have something to send when PWM enabled
-      if (firstPacketOnMode) {                   // First time through attach pins to start output
-        attachServoPins();
+      if (currentOutputMode != nextOutputMode) {   // If new mode, turn off all modes
+       firstPacketOnMode = true;
+       detachServoPins();
+       if (PPMEnabled()) ppmDisable();
+       if (sbusEnabled()) sbusDisable();
       }
-    }
-  
-    if (nextOutputMode == CABELL_RECIEVER_OUTPUT_PPM) {
-      outputSumPPM();                           // Do this first so we have something to send when PPM enabled
-      if (firstPacketOnMode) {
-        if (!PPMEnabled()) {
-          ppmSetup(PPM_OUTPUT_PIN, RX_NUM_CHANNELS);
+    
+      if (nextOutputMode == CABELL_RECIEVER_OUTPUT_PWM) {
+        outputPWM();                               // Do this first so we have something to send when PWM enabled
+        if (firstPacketOnMode) {                   // First time through attach pins to start output
+          attachServoPins();
         }
       }
-    }
-  
-    if (nextOutputMode == CABELL_RECIEVER_OUTPUT_SBUS) {
-      outputSbus();                           // Do this first so we have something to send when SBUS enabled
-      if (firstPacketOnMode) {
-        if (!sbusEnabled()) {
-          sbusSetup();
+    
+      if (nextOutputMode == CABELL_RECIEVER_OUTPUT_PPM) {
+        outputSumPPM();                           // Do this first so we have something to send when PPM enabled
+        if (firstPacketOnMode) {
+          if (!PPMEnabled()) {
+            ppmSetup(PPM_OUTPUT_PIN, RX_NUM_CHANNELS);
+          }
         }
       }
+    
+      if (nextOutputMode == CABELL_RECIEVER_OUTPUT_SBUS) {
+        outputSbus();                           // Do this first so we have something to send when SBUS enabled
+        if (firstPacketOnMode) {
+          if (!sbusEnabled()) {
+            sbusSetup();
+          }
+        }
+      }
+      currentOutputMode = nextOutputMode;
     }
-    currentOutputMode = nextOutputMode;
 #endif
 }
 
@@ -378,7 +396,7 @@ bool getPacket() {
       sequentialMissCount = 0;
       inititalGoodPacketRecieved = true;
       lastPacketTime = micros();
-      failSafeDisplayFlag = true;
+      failSafeMode = false;
       packetMissed = false;
       rssi.hit();
       #ifdef TEST_HARNESS
@@ -525,7 +543,7 @@ void outputSbus() {  // output as AETR
     
     setSbusOutputChannelValue(x, channelValues[adjusted_x]);
   }
-  sbusSetFailsafe(!failSafeDisplayFlag); 
+  sbusSetFailsafe(failSafeMode); 
   sbusSetFrameLost(packetMissed); 
 }
 
@@ -538,7 +556,7 @@ void outputFailSafeValues(bool callOutputChannels) {
     channelValues[x] = failSafeChannelValues[x];
   }
 
-  if (failSafeDisplayFlag) {  
+  if (!failSafeMode) {  
     #ifdef TEST_HARNESS
       testOut.failSafe();
     #else
@@ -546,7 +564,7 @@ void outputFailSafeValues(bool callOutputChannels) {
         Serial.println(F("Failsafe"));
       }
     #endif
-    failSafeDisplayFlag = false;
+    failSafeMode = true;
   }
   if (callOutputChannels)
     outputChannels();
@@ -555,11 +573,11 @@ void outputFailSafeValues(bool callOutputChannels) {
 //--------------------------------------------------------------------------------------------------------------------------
 #ifndef TEST_HARNESS
   ISR(TIMER1_COMPA_vect){
-    if (currentOutputMode == 0)
+    if (currentOutputMode == CABELL_RECIEVER_OUTPUT_PWM)
       MyServoInterruptOneProcessing();
-    else if (currentOutputMode == 1)
+    else if (currentOutputMode == CABELL_RECIEVER_OUTPUT_PPM)
       SUM_PPM_ISR();
-    else if (currentOutputMode == 2)
+    else if (currentOutputMode == CABELL_RECIEVER_OUTPUT_SBUS)
       SBUS_ISR();
   }
 #endif
@@ -587,7 +605,7 @@ void unbindReciever() {
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
-void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]) {
+void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[], CABELL_RxTxPacket_t::RxMode_t RxMode) {
   // new radio address is in channels 11 to 15
   uint64_t newRadioPipeID = (((uint64_t)(tempHoldValues[11]-1000)) << 32) + 
                             (((uint64_t)(tempHoldValues[12]-1000)) << 24) + 
@@ -601,7 +619,11 @@ void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]) {
     EEPROM.put(radioPipeEEPROMAddress,radioNormalRxPipeID);
     Serial.print(F("Bound to new TX address for model number "));Serial.println(modelNum);
     digitalWrite(LED_PIN, LOW);                              // Turn off LED to indicate successful bind
-    EEPROM.put(softRebindFlagEEPROMAddress,(uint8_t)DO_NOT_SOFT_REBIND);
+    if (RxMode == CABELL_RxTxPacket_t::RxMode_t::bindFalesafeNoPulse) {
+      EEPROM.put(softRebindFlagEEPROMAddress,(uint8_t)BOUND_WITH_FAILSAFE_NO_PULSES);
+    } else {
+      EEPROM.put(softRebindFlagEEPROMAddress,(uint8_t)DO_NOT_SOFT_REBIND);
+    }
     setFailSafeDefaultValues();
     outputFailSafeValues(true);
     Serial.println(F("Reciever bound.  Reboot to enter normal mode"));
@@ -737,17 +759,18 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
   }
 
   switch (RxMode) {
-    case CABELL_RxTxPacket_t::RxMode_t::bind   :  if (bindMode) {
-                                                    bindReciever(modelNum, tempHoldValues);
-                                                  }
-                                                  else
-                                                  {
-                                                    if (currentOutputMode != CABELL_RECIEVER_OUTPUT_SBUS) {
-                                                      Serial.println(F("Bind command detected but receiver not in bind mode"));
-                                                    }
-                                                    packet_rx = false;
-                                                  }
-                                                  break;
+    case CABELL_RxTxPacket_t::RxMode_t::bindFalesafeNoPulse   : 
+    case CABELL_RxTxPacket_t::RxMode_t::bind                  : if (bindMode) {
+                                                                  bindReciever(modelNum, tempHoldValues, RxMode);
+                                                                }
+                                                                else
+                                                                {
+                                                                  if (currentOutputMode != CABELL_RECIEVER_OUTPUT_SBUS) {
+                                                                    Serial.println(F("Bind command detected but receiver not in bind mode"));
+                                                                  }
+                                                                  packet_rx = false;
+                                                                }
+                                                                break;
                                               
     case CABELL_RxTxPacket_t::RxMode_t::setFailSafe :  if (modelNum == currentModel) {                                                         
                                                          digitalWrite(LED_PIN, HIGH);
@@ -939,10 +962,3 @@ void swapRecievers() {
   primaryReciever = secondaryReciever;
   secondaryReciever = hold;
 }
-
-
-
-
-
-
-

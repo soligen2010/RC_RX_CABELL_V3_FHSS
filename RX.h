@@ -73,6 +73,7 @@
 #define INITIAL_TELEMETRY_PACKETS_TO_SKIP  1000   // dont send initial telemetry packets to avoid anoying warnings at startup
 
 #define DO_NOT_SOFT_REBIND              0xAA
+#define BOUND_WITH_FAILSAFE_NO_PULSES   0x99
 
 #define SERVO_OUTPUT_PINS         {PITCH_PIN,ROLL_PIN,YAW_PIN,THROTTLE_PIN,AUX1_PIN,AUX2_PIN,AUX3_PIN,AUX4_PIN}
 
@@ -83,6 +84,7 @@ typedef struct {
          setFailSafe            = 2,
          normalWithTelemetry    = 3,   
          telemetryResponse      = 4,
+         bindFalesafeNoPulse    = 5,
          unBind                 = 127
    } RxMode;
    uint8_t reserved = 0;
@@ -114,7 +116,7 @@ void detachServoPins();
 void setNextRadioChannel(bool missedPacket);
 void checkFailsafeDisarmTimeout(unsigned long lastPacketTime,bool inititalGoodPacketRecieved);
 void unbindReciever();
-void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[]);
+void bindReciever(uint8_t modelNum, uint16_t tempHoldValues[], CABELL_RxTxPacket_t::RxMode_t RxMode);
 bool validateChecksum(CABELL_RxTxPacket_t const& packet, uint8_t maxPayloadValueIndex);
 bool readAndProcessPacket();
 bool decodeChannelValues(CABELL_RxTxPacket_t const& RxPacket, uint8_t channelsRecieved, uint16_t tempHoldValues[]);
