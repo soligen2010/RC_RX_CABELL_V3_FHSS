@@ -77,6 +77,8 @@ int16_t analogValue[2] = {0,0};
 
 uint16_t initialTelemetrySkipPackets = 0;
 
+uint8_t currentChannel = CABELL_RADIO_MIN_CHANNEL_NUM;  // Initializes the channel sequence.
+
 MyServo channelServo[RX_NUM_CHANNELS];
 
 #ifdef TEST_HARNESS
