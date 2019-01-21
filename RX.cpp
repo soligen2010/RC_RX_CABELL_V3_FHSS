@@ -245,7 +245,6 @@ void outputChannels() {
 
 //--------------------------------------------------------------------------------------------------------------------------
 void setNextRadioChannel(bool missedPacket) {
-  static int currentChannel = CABELL_RADIO_MIN_CHANNEL_NUM;  // Initializes the channel sequence.
   
   //primaryReciever->stopListening();
   primaryReciever->write_register(NRF_CONFIG,radioConfigRegisterForTX);  // This is in place of stop listening to make the change to TX more quickly. Also sets all interrupts to mask
