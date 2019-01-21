@@ -24,7 +24,7 @@
  along with RC_RX_CABELL_V3_FHSS.  If not, see <http://www.gnu.org/licenses/>.
  */
  
-#include <arduino.h>
+#include <Arduino.h>
 #include "Rx_Tx_Util.h"
 #include "RX.h"
 
@@ -103,8 +103,3 @@ void getChannelSequence (uint8_t outArray[], uint8_t numChannels, uint64_t permu
     //Serial.println(sequenceValue);
   }
 }
-
-
-
-
-

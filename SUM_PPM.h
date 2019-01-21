@@ -24,7 +24,7 @@
 #ifndef __have__SUM_PPM_h__
 #define __have__SUM_PPM_h__
 
-#include "pins.h"
+#include "Pins.h"
 
 ////////////////////// CONFIGURATION ///////////////////////////////
 #define PPM_FrLen             22500                      //set the PPM frame length in microseconds (1ms = 1000µs)
