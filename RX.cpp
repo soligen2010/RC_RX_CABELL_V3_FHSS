@@ -669,6 +669,10 @@ bool readAndProcessPacket() {    //only call when a packet is available on the r
   CABELL_RxTxPacket_t RxPacket;
   
   primaryReciever->read( &RxPacket,  sizeof(RxPacket) );
+  int tx_channel = RxPacket.reserved & CABELL_RESERVED_MASK_CHANNEL;
+  if (tx_channel != 0 ) {
+    currentChannel = tx_channel;
+  }
   setNextRadioChannel(false);                   // Also sends telemetry if in telemetry mode.  Doing this as soon as possible to keep timing as tight as possible
                                                 // False indicates that packet was not missed
 
