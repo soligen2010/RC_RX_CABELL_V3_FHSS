@@ -73,6 +73,7 @@ Turn on the transmitter and have it send a Bind packet.  The receiver LED change
 The receiver fail-safes after 1 second when no packets are received.  If a connection is not restored within 3 seconds then the receiver will disarm.  
 * At fail-safe, the throttle is set to minimum, and the other channels are set to the failsafe value.
 * After disarm, the throttle will stay at minimum until the receiver is re-armed.  To re-arm the receiver move the throttle to the minimum position.
+* If FailsafeNu Pulses is used, then all output signals cease on failsafe (Both PPM and SBUS signals are discontinued)
 
 When a receiver is bound the failsafe values are reset to the default values, which are throttle minimum and all other channels at mid-point.
 
@@ -202,6 +203,8 @@ Failsafe No Pulses can only be set at bind time.  All servos will receive no pul
 * Change the sub-protocol to 5.  
 * Perform the Bind procedure.
 * Change the sub-protocol to the desired setting for flying.
+
+If your output goes to a flight controller via SBUS, and the flight controller honors the SBUS failsafe flag (which is typical), then you probably do not want to use No Pulses because the SBUS protocol handles the failsafe appropriately.
 
 Always test the Fail-safe settings before flying.  Turning off the transmitter should initiate a Fail-safe after one second.
 
