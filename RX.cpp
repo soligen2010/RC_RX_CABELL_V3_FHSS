@@ -403,7 +403,7 @@ bool getPacket() {
   //
   // For the initial lock when the receiver is powered on, the rule is much more stringent to get a lock, and all packets are flagged bad until
   // the power on lock is obtained.  This is so that the model cannot be controlled until the initial lock is obtained.
-  // This is only for the first lock.  A re-sync is less stringent so that is lock is lost for a model in flight then control is easier to re-establish.
+  // This is only for the first lock.  A re-sync is less stringent so that if lock is lost for a model in flight then control is easier to re-establish.
   // Also, a re-sync that is not yet locked are considered good packets so that a weak re-sync can still control the model.
   
   if (!hoppingLockedIn) {

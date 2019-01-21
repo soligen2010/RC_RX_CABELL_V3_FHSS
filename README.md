@@ -244,7 +244,7 @@ You can also connect an I2C LCD display.  This may require additional code editi
 typedef struct {
    enum RxMode_t : uint8_t {   // Note bit 8 is used to indicate if the packet is the first of 2 on the channel.  
                                // Mask out this bit before using the enum
-         normal                 = 0,  // 250 kbps
+         normal                 = 0, 
          bind                   = 1,
          setFailSafe            = 2,
          normalWithTelemetry    = 3,  
@@ -257,7 +257,7 @@ typedef struct {
                            *   mask 0x30>>4 : Receiver output mode
                            *                  0 (00) = Single PPM on individual pins for each channel 
                            *                  1 (01) = SUM PPM on channel 1 pin
-                           *                  2 (10) = SBUS output (Experimental)
+                           *                  2 (10) = SBUS output
                            *                  3 (11) = Unused
                            *   mask 0x40>>6   Contains max power override flag for Multiprotocol TX module. Also sent to RX
                            *                  The RX uses MAX power when 1, HIGH power when 0

@@ -40,6 +40,8 @@
 #define CABELL_RADIO_CHANNELS         9                   // This is 1/5 of the total number of radio channels used for FHSS
 #define CABELL_RADIO_MIN_CHANNEL_NUM  3                   // Channel 0 is right on the boarder of allowed frequency range, so move up to avoid bleeding over
 
+#define CABELL_RESERVED_MASK_CHANNEL    0x3F
+
 #define CABELL_OPTION_MASK_MAX_POWER_OVERRIDE    0x40
 #define CABELL_OPTION_MASK_CHANNEL_REDUCTION     0x0F
 #define CABELL_OPTION_MASK_RECIEVER_OUTPUT_MODE  0x30
@@ -70,7 +72,7 @@
 
 #define INITIAL_TELEMETRY_PACKETS_TO_SKIP  1000   // dont send initial telemetry packets to avoid anoying warnings at startup
 
-#define DO_NOT_SOFT_REBIND   0xAA
+#define DO_NOT_SOFT_REBIND              0xAA
 
 #define SERVO_OUTPUT_PINS         {PITCH_PIN,ROLL_PIN,YAW_PIN,THROTTLE_PIN,AUX1_PIN,AUX2_PIN,AUX3_PIN,AUX4_PIN}
 
@@ -83,13 +85,13 @@ typedef struct {
          telemetryResponse      = 4,
          unBind                 = 127
    } RxMode;
-   uint8_t  reserved = 0;
-   uint8_t  option;
+   uint8_t reserved = 0;
+   uint8_t option;
                           /*   mask 0x0F    : Channel reduction.  The number of channels to not send (subtracted from the 16 max channels) at least 4 are always sent
                            *   mask 0x30>>4 : Receiver output mode
                            *                  0 (00) = Single PPM on individual pins for each channel 
                            *                  1 (01) = SUM PPM on channel 1 pin
-                           *                  2 (10) = Future use.  Reserved for SBUS output
+                           *                  2 (10) = SBUS output
                            *                  3 (11) = Unused
                            *   mask 0x40>>6   Contains max power override flag for Multi-protocol TX module. Also sent to RX
                            *   mask 0x80>>7   Unused 
