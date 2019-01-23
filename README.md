@@ -264,8 +264,7 @@ You can also connect an I2C LCD display.  This may require additional code editi
 
 ```
 typedef struct {
-   enum RxMode_t : uint8_t {   // Note bit 8 is used to indicate if the packet is the first of 2 on the channel.  
-                               // Mask out this bit before using the enum
+   enum RxMode_t : uint8_t {   
          normal                 = 0, 
          bind                   = 1,
          setFailSafe            = 2,
@@ -274,7 +273,8 @@ typedef struct {
          bindFalesafeNoPulse    = 5,   (experimental)
          unBind                 = 127
    } RxMode;
-   uint8_t  reserved = 0;
+   uint8_t  reserved = 0; /* Contains the channel number that the packet was sent on in bits 0-5 
+                          */
    uint8_t  option;
                           /*   mask 0x0F    : Channel reduction.  The number of channels to not send (subtracted from the 16 max channels) at least 4 channels are always sent.
                            *   mask 0x30>>4 : Receiver output mode
