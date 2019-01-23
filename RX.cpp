@@ -227,7 +227,7 @@ void outputChannels() {
       }
       
       if (!throttleArmed) {
-        channelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;     // Safety precaution.  Min throttle if not armed
+        channelValues[THROTTLE_CHANNEL] = THROTTLE_DISARM_VALUE;     // Safety precaution.  Min throttle if not armed
       }
       
       bool firstPacketOnMode = false;
@@ -647,7 +647,7 @@ void setFailSafeDefaultValues() {
   for (int x = 0; x < CABELL_NUM_CHANNELS; x++) {
     defaultFailSafeValues[x] = CHANNEL_MID_VALUE;
   }
-  defaultFailSafeValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;           // Throttle should always be the min value when failsafe}
+  defaultFailSafeValues[THROTTLE_CHANNEL] = THROTTLE_DISARM_VALUE;           // Throttle should always be the min value when failsafe}
   setFailSafeValues(defaultFailSafeValues);  
 }
 
@@ -659,7 +659,7 @@ void loadFailSafeDefaultValues() {
       failSafeChannelValues[x] = CHANNEL_MID_VALUE;
     }
   }
-  failSafeChannelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;     // Throttle should always be the min value when failsafe
+  failSafeChannelValues[THROTTLE_CHANNEL] = THROTTLE_DISARM_VALUE;     // Throttle should always be the min value when failsafe
 }
 
 //--------------------------------------------------------------------------------------------------------------------------
@@ -667,7 +667,7 @@ void setFailSafeValues(uint16_t newFailsafeValues[]) {
     for (int x = 0; x < CABELL_NUM_CHANNELS; x++) {
       failSafeChannelValues[x] = newFailsafeValues[x];
     }
-    failSafeChannelValues[THROTTLE_CHANNEL] = CHANNEL_MIN_VALUE;           // Throttle should always be the min value when failsafe}
+    failSafeChannelValues[THROTTLE_CHANNEL] = THROTTLE_DISARM_VALUE;           // Throttle should always be the min value when failsafe}
     EEPROM.put(failSafeChannelValuesEEPROMAddress,failSafeChannelValues);  
     if (currentOutputMode != CABELL_RECIEVER_OUTPUT_SBUS) {
       Serial.println(F("Fail Safe Values Set"));
@@ -797,7 +797,7 @@ bool processRxMode (uint8_t RxMode, uint8_t modelNum, uint16_t tempHoldValues[])
     case CABELL_RxTxPacket_t::RxMode_t::normal :  if (modelNum == currentModel) {
                                                     digitalWrite(LED_PIN, LOW);
                                                     failSafeValuesHaveBeenSet = false;             // Reset when not in setFailSafe mode so next time failsafe is to be set it will take
-                                                    if (!throttleArmed && (tempHoldValues[THROTTLE_CHANNEL] <= CHANNEL_MIN_VALUE + 10)) { 
+                                                    if (!throttleArmed && (tempHoldValues[THROTTLE_CHANNEL] <= THROTTLE_DISARM_VALUE + 10) && (tempHoldValues[THROTTLE_CHANNEL] >= THROTTLE_DISARM_VALUE - 10)) { 
                                                       if (currentOutputMode != CABELL_RECIEVER_OUTPUT_SBUS) {
                                                         Serial.println("Throttle Armed");             // Don't use F macro here.  Want this to be fast as it is in the main loop logic
                                                       }

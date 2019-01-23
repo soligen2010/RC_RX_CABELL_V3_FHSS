@@ -54,6 +54,8 @@
 #define CHANNEL_MAX_VALUE         2000
 #define CHANNEL_MID_VALUE         ((CHANNEL_MIN_VALUE + CHANNEL_MAX_VALUE)/2)
 
+#define THROTTLE_DISARM_VALUE     CHANNEL_MIN_VALUE   // If you have a reverse where mid throttle is the off state, this can be changed to the value that causes the motor to stop
+
 #define PITCH_CHANNEL             0
 #define ROLL_CHANNEL              1
 #define YAW_CHANNEL               2
