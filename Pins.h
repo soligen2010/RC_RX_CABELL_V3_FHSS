@@ -29,8 +29,11 @@
 
 #include "RX.h"
 
-#define RADIO1_CSN_PIN             14     // AKA A0
+#define RADIO1_CSN_PIN            14     // AKA A0
 #define RADIO2_CSN_PIN            10     // Second radio for diversity.  Some older hardware used this pin as CE
+
+#define RADIO1_CE_PIN             RADIO1_CSN_PIN  // Set CE pin to CSN puts radio in a mode where CE is not used (always pulled high)
+#define RADIO2_CE_PIN             RADIO2_CSN_PIN
 
 #define SPI_MOSI                  11
 #define SPI_MISO                  12
@@ -86,5 +89,3 @@
 #define IS_RADIO_IRQ_on       ((RADIO_IRQ_ipr & RADIO_IRQ_PIN_MASK) == 0x00)
 
 #endif
-
-

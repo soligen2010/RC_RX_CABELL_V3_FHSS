@@ -37,8 +37,8 @@
 #include "My_nRF24L01.h"
 #include "SBUS.h"
 
-My_RF24 radio1(RADIO1_CSN_PIN,RADIO1_CSN_PIN);  
-My_RF24 radio2(RADIO2_CSN_PIN,RADIO2_CSN_PIN);  
+My_RF24 radio1(RADIO1_CE_PIN,RADIO1_CSN_PIN);  
+My_RF24 radio2(RADIO2_CE_PIN,RADIO2_CSN_PIN);  
 
 My_RF24* primaryReciever = NULL;
 My_RF24* secondaryReciever = NULL;
@@ -146,6 +146,11 @@ void setupReciever() {
   pinMode(RADIO2_CSN_PIN,OUTPUT);   
   digitalWrite(RADIO1_CSN_PIN,HIGH);
   digitalWrite(RADIO2_CSN_PIN,HIGH);
+  
+  pinMode(RADIO1_CE_PIN,OUTPUT);    
+  pinMode(RADIO2_CE_PIN,OUTPUT);   
+  digitalWrite(RADIO1_CE_PIN,HIGH);
+  digitalWrite(RADIO2_CE_PIN,HIGH);
   
   radio1.begin();
   radio2.begin();
