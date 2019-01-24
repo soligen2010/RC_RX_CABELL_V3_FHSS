@@ -112,4 +112,3 @@ class TestHarness {
 
 #endif
 #endif
-
