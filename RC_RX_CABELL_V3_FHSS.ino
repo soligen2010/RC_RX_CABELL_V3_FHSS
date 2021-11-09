@@ -39,8 +39,15 @@
 #include "Pins.h"
 
 //--------------------------------------------------------------------------------------------------------------------------
+// which sketch is running?
+void showID(void) {
+  Serial.println(F("Running " __FILE__ "\nBuilt " __DATE__));
+}
+
+//--------------------------------------------------------------------------------------------------------------------------
 void setup(void) {
   Serial.begin(74880);
+  showID();
   Serial.println(); Serial.println(F("Initializing"));
   
   pinMode (BIND_BUTTON_PIN,INPUT_PULLUP);  // used for bind plug or button

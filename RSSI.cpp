@@ -84,6 +84,10 @@ void RSSI::resetCounters() {
 
 //--------------------------------------------------------------------------------------------------------------------------
 uint8_t RSSI::getRSSI() {
- return constrain(packetRate - sequentialMissTrack,TELEMETRY_RSSI_MIN_VALUE,TELEMETRY_RSSI_MAX_VALUE);
+  uint8_t rssi =
+     constrain(packetRate - sequentialMissTrack,TELEMETRY_RSSI_MIN_VALUE,TELEMETRY_RSSI_MAX_VALUE);
+  // clear tracking count for next time; no double-counting
+  // It is not part of resetCounters() to return a more recent/timely value to transmitter
+  sequentialMissTrack = TELEMETRY_RSSI_MIN_VALUE;
+  return rssi;
 }
-
